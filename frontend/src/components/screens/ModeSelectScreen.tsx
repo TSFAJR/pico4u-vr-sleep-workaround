@@ -11,9 +11,7 @@ interface ModeSelectScreenProps {
 
 export function ModeSelectScreen({ onNext }: ModeSelectScreenProps) {
   const { t, connectionMode } = useAppContext()
-  const [selected, setSelected] = useState<ConnectionMode>(
-    connectionMode ?? 'wireless',
-  )
+  const [selected, setSelected] = useState<ConnectionMode>(connectionMode ?? 'wireless')
 
   return (
     <div className='flex-1 flex flex-col justify-between px-5 py-2 animate-fadeIn'>
@@ -21,12 +19,8 @@ export function ModeSelectScreen({ onNext }: ModeSelectScreenProps) {
         <StepIndicator currentStep='mode' />
 
         <div className='mt-5 mb-6 text-center'>
-          <h2 className='text-lg font-bold text-[var(--app-text)]'>
-            どうやって接続しますか？
-          </h2>
-          <p className='mt-1 text-xs text-[var(--app-text-muted)]'>
-            あとから設定で変更できます
-          </p>
+          <h2 className='text-lg font-bold text-[var(--app-text)]'>どうやって接続しますか？</h2>
+          <p className='mt-1 text-xs text-[var(--app-text-muted)]'>あとから設定で変更できます</p>
         </div>
 
         <div className='flex flex-col gap-3.5'>
@@ -35,7 +29,13 @@ export function ModeSelectScreen({ onNext }: ModeSelectScreenProps) {
             selected={selected === 'wired'}
             onClick={() => setSelected('wired')}
             icon={
-              <svg className='w-6 h-6' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
+              <svg
+                className='w-6 h-6'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+              >
                 <circle cx='12' cy='12' r='2' />
                 <path d='M12 2v8M12 14v8M8 6h8M8 18h8' />
               </svg>
@@ -49,7 +49,13 @@ export function ModeSelectScreen({ onNext }: ModeSelectScreenProps) {
             selected={selected === 'wireless'}
             onClick={() => setSelected('wireless')}
             icon={
-              <svg className='w-6 h-6' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
+              <svg
+                className='w-6 h-6'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+              >
                 <path d='M5 12.55a11 11 0 0 1 14.08 0' />
                 <path d='M1.42 9a16 16 0 0 1 21.16 0' />
                 <path d='M8.53 16.11a6 6 0 0 1 6.95 0' />

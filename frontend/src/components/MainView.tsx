@@ -27,12 +27,8 @@ export function MainView() {
     connectionError,
   } = useAppContext()
 
-  const [screen, setScreen] = useState<Screen>(
-    connectionMode ? 'operate' : 'mode',
-  )
-  const [targetMode, setTargetMode] = useState<ConnectionMode>(
-    connectionMode ?? 'wireless',
-  )
+  const [screen, setScreen] = useState<Screen>(connectionMode ? 'operate' : 'mode')
+  const [targetMode, setTargetMode] = useState<ConnectionMode>(connectionMode ?? 'wireless')
   const [activeSheet, setActiveSheet] = useState<SheetType>(null)
 
   // ─── Auto-connecting / Failed State ───

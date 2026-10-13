@@ -26,12 +26,8 @@ export function PrepareScreen({ mode, onBack, onSuccess }: PrepareScreenProps) {
   } = useAppContext()
 
   const isWireless = mode === 'wireless'
-  const isBusy = isWireless
-    ? wirelessSetupStatus === 'loading'
-    : wiredSetupStatus === 'loading'
-  const isError = isWireless
-    ? wirelessSetupStatus === 'error'
-    : wiredSetupStatus === 'error'
+  const isBusy = isWireless ? wirelessSetupStatus === 'loading' : wiredSetupStatus === 'loading'
+  const isError = isWireless ? wirelessSetupStatus === 'error' : wiredSetupStatus === 'error'
 
   // If successfully connected, navigate to OperateScreen
   useEffect(() => {
@@ -53,9 +49,7 @@ export function PrepareScreen({ mode, onBack, onSuccess }: PrepareScreenProps) {
   // Filter steps for wired mode (only first 3 steps)
   const displaySteps = isWireless
     ? setupSteps
-    : setupSteps.filter(
-        (s) => s.id === 'usb' || s.id === 'authorized' || s.id === 'pico',
-      )
+    : setupSteps.filter((s) => s.id === 'usb' || s.id === 'authorized' || s.id === 'pico')
 
   return (
     <div className='flex-1 flex flex-col justify-between px-5 py-2 animate-fadeIn'>

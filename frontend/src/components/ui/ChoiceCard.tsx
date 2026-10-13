@@ -45,9 +45,7 @@ export function ChoiceCard({
         </div>
         <div className='flex-1 pr-12'>
           <h3 className='text-sm font-bold text-[var(--app-text)] leading-snug'>{title}</h3>
-          <p className='mt-1 text-xs text-[var(--app-text-muted)] leading-relaxed'>
-            {description}
-          </p>
+          <p className='mt-1 text-xs text-[var(--app-text-muted)] leading-relaxed'>{description}</p>
         </div>
       </div>
     </button>

@@ -8,10 +8,7 @@ interface OperateScreenProps {
   onOpenLogs: () => void
 }
 
-export function OperateScreen({
-  onChangeConnection,
-  onOpenLogs,
-}: OperateScreenProps) {
+export function OperateScreen({ onChangeConnection, onOpenLogs }: OperateScreenProps) {
   const {
     t,
     connectionMode,
@@ -54,11 +51,7 @@ export function OperateScreen({
     <div className='flex-1 flex flex-col justify-between items-center px-5 py-4 animate-fadeIn select-none'>
       {/* Top Connection Chip */}
       <div className='pt-2'>
-        <ConnectionChip
-          mode={connectionMode}
-          ip={deviceIp}
-          connected={isConnected}
-        />
+        <ConnectionChip mode={connectionMode} ip={deviceIp} connected={isConnected} />
       </div>
 
       {/* Center Action Area */}

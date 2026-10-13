@@ -26,9 +26,7 @@ export function Sheet({ title, isOpen, onClose, children }: SheetProps) {
         </div>
 
         {/* Content */}
-        <div className='flex-1 overflow-y-auto p-5 custom-scrollbar'>
-          {children}
-        </div>
+        <div className='flex-1 overflow-y-auto p-5 custom-scrollbar'>{children}</div>
       </div>
     </div>
   )
