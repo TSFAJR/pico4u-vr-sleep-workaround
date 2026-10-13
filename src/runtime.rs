@@ -1,10 +1,11 @@
 use crate::adb_client::run_adb_device_command;
 use crate::config::load_config;
 use crate::connection::{self, ConnectionMode};
+use crate::error::{AppError, ErrorCode};
 use crate::state::AppState;
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, State};
-use tokio::time::{Duration, MissedTickBehavior, interval, sleep, timeout};
+use tokio::time::{interval, sleep, timeout, Duration, MissedTickBehavior};
 
 #[tauri::command]
 pub fn get_running(state: State<'_, AppState>) -> bool {
@@ -16,19 +17,21 @@ pub async fn start_keep_awake(
     app: AppHandle,
     state: State<'_, AppState>,
     mode: ConnectionMode,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let _guard = state.operation.lock().await;
     if state.is_running.load(Ordering::SeqCst) {
-        return Err("already_running".into());
+        return Err(AppError::new(ErrorCode::AlreadyRunning));
     }
     let config = load_config(&app);
-    config.validate()?;
+    config
+        .validate()
+        .map_err(|e| AppError::with(ErrorCode::Unknown, e))?;
     let serial = timeout(
         Duration::from_secs(25),
         connection::require_target(&app, mode, &config.ip_address),
     )
     .await
-    .map_err(|_| "connection_timeout")??;
+    .map_err(|_| AppError::new(ErrorCode::Timeout))??;
     state.is_running.store(true, Ordering::SeqCst);
     let debug = state.debug_mode.clone();
     let wake_app = app.clone();
@@ -40,7 +43,7 @@ pub async fn start_keep_awake(
             timer.tick().await;
             let result = async {
                 if !connection::verify_pico(&wake_app, &wake_serial).await? {
-                    return Err("pico_not_connected".into());
+                    return Err(AppError::new(ErrorCode::DeviceLost));
                 }
                 let power = run_adb_device_command(
                     Some(&wake_app),
@@ -56,7 +59,7 @@ pub async fn start_keep_awake(
                     )
                     .await?;
                 }
-                Ok::<_, String>(())
+                Ok::<_, AppError>(())
             }
             .await;
             if debug.load(Ordering::Relaxed) {
@@ -74,7 +77,7 @@ pub async fn start_keep_awake(
             sleep(Duration::from_secs_f64(config.dim_delay_hours * 3600.0)).await;
             let result = async {
                 if !connection::verify_pico(&app, &serial).await? {
-                    return Err("pico_not_connected".into());
+                    return Err(AppError::new(ErrorCode::DeviceLost));
                 }
                 run_adb_device_command(
                     Some(&app),
@@ -82,6 +85,7 @@ pub async fn start_keep_awake(
                     "shell:settings put system screen_brightness 1",
                 )
                 .await
+                .map_err(AppError::from)
             }
             .await;
             let _ = app.emit(
@@ -98,7 +102,7 @@ pub async fn start_keep_awake(
 }
 
 #[tauri::command]
-pub async fn stop_keep_awake(state: State<'_, AppState>) -> Result<(), String> {
+pub async fn stop_keep_awake(state: State<'_, AppState>) -> Result<(), AppError> {
     let _guard = state.operation.lock().await;
     state.is_running.store(false, Ordering::SeqCst);
     let wake = state.keep_awake_task.lock().unwrap().take();

@@ -6,6 +6,7 @@ import packageJson from '../../package.json'
 import { DeviceChecking } from './DeviceChecking'
 import { ModeSelection } from './ModeSelection'
 import { ConnectionPanel } from './ConnectionPanel'
+import { ErrorCard } from './ErrorCard'
 
 type Tab = 'connection' | 'logs' | 'settings'
 type HomeView = 'main' | 'settings'
@@ -26,6 +27,7 @@ export function MainView() {
     autoConnectType,
     autoConnectAttempt,
     deviceIp,
+    connectionError,
   } = useAppContext()
 
   const [activeTab, setActiveTab] = useState<Tab>('connection')
@@ -202,13 +204,11 @@ export function MainView() {
                 </div>
 
                 {/* Error message */}
-                <div>
-                  <p className='text-sm font-semibold text-red-600 dark:text-red-400'>
-                    {t('auto_connect_failed_title')}
-                  </p>
-                  <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-                    {t('auto_connect_failed_desc', { ip: deviceIp })}
-                  </p>
+                <div className='w-full'>
+                  <ErrorCard
+                    error={connectionError}
+                    fallbackMessage={t('auto_connect_failed_desc', { ip: deviceIp })}
+                  />
                 </div>
 
                 {/* Action buttons */}

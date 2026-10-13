@@ -2,6 +2,206 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 
+const errorsEn = {
+  usb_not_found: {
+    title: 'Headset not found via USB',
+    hints: [
+      'Reconnect the USB cable',
+      'Make sure you are using a USB cable that supports data transfer',
+      'Verify that Developer Mode and USB Debugging are enabled on the headset',
+      'Note: USB ADB is disabled while the headset is in wireless ADB mode. If so, restart the headset.',
+    ],
+  },
+  usb_unauthorized: {
+    title: 'USB debugging not authorized',
+    hints: [
+      'Put on the headset and accept the "Allow USB debugging" prompt (checking "Always allow" is recommended)',
+    ],
+  },
+  usb_offline: {
+    title: 'Headset is offline',
+    hints: [
+      'Unplug and reconnect the USB cable',
+      'Wake up the headset from sleep',
+    ],
+  },
+  not_pico: {
+    title: 'Unsupported device detected',
+    hints: ['Make sure a PICO 4 Ultra (A9210) headset is connected'],
+  },
+  wifi_disabled: {
+    title: 'Headset Wi-Fi is turned off',
+    hints: [
+      'Turn on Wi-Fi in the headset settings',
+      'Connect to the same Wi-Fi network as this PC',
+    ],
+  },
+  wifi_not_connected: {
+    title: 'Headset is not connected to Wi-Fi',
+    hints: ['Connect the headset to the same Wi-Fi network as this PC'],
+  },
+  tcpip_failed: {
+    title: 'Failed to switch headset to wireless ADB mode',
+    hints: ['Restart the headset and try again'],
+  },
+  wireless_refused: {
+    title: 'Wireless connection refused',
+    hints: [
+      'Wireless ADB resets when the headset restarts. Connect via USB and run Wireless Setup again.',
+    ],
+  },
+  wireless_unreachable: {
+    title: 'Cannot reach the headset over the network',
+    hints: [
+      'Make sure the headset is powered on and awake',
+      'Confirm the PC and headset are on the same Wi-Fi network (subnet)',
+      'Check if the headset IP address has changed',
+    ],
+  },
+  wireless_unauthorized: {
+    title: 'Wireless ADB authentication failed',
+    hints: ['Connect via USB and perform Wireless Setup again'],
+  },
+  wireless_not_found: {
+    title: 'Wireless device not found',
+    hints: [
+      'Verify the target IP address',
+      'Perform Wireless Setup via USB to enable wireless ADB',
+    ],
+  },
+  adb_unavailable: {
+    title: 'Could not start or reach the ADB server',
+    hints: [
+      'Check for conflicting ADB processes and restart the application',
+    ],
+  },
+  timeout: {
+    title: 'Connection operation timed out',
+    hints: ['Check your cable and network connection, then try again'],
+  },
+  already_running: {
+    title: 'Sleep prevention is already running',
+    hints: ['Stop sleep prevention before changing connection settings'],
+  },
+  invalid_ip: {
+    title: 'Invalid IP address',
+    hints: ['Enter a valid IPv4 address (e.g. 192.168.1.20)'],
+  },
+  multiple_pico: {
+    title: 'Multiple PICO devices detected',
+    hints: ['Disconnect other PICO headsets to continue'],
+  },
+  device_lost: {
+    title: 'Connection to headset lost',
+    hints: ['Check the headset cable or Wi-Fi connection'],
+  },
+  unknown: {
+    title: 'An error occurred',
+    hints: ['Check your connection and try again'],
+  },
+}
+
+const errorsJa = {
+  usb_not_found: {
+    title: 'ヘッドセットがUSBで見つかりません',
+    hints: [
+      'USBケーブルを挿し直してください',
+      'データ転送に対応したUSBケーブルを使用しているか確認してください',
+      '開発者モードとUSBデバッグが有効か確認してください',
+      '※ヘッドセットが無線ADBモード中の場合、USB側のADBが無効になります。その場合はヘッドセットを再起動してください',
+    ],
+  },
+  usb_unauthorized: {
+    title: 'USBデバッグが許可されていません',
+    hints: [
+      'ヘッドセットを被り、画面に表示されている「USBデバッグを許可」ダイアログで許可してください（「常に許可」を推奨）',
+    ],
+  },
+  usb_offline: {
+    title: 'ヘッドセットが応答していません',
+    hints: [
+      'USBケーブルを抜き差ししてください',
+      'ヘッドセットのスリープを解除してください',
+    ],
+  },
+  not_pico: {
+    title: 'PICO 4 Ultra 以外のデバイスが検出されました',
+    hints: ['PICO 4 Ultra（A9210）が接続されていることを確認してください'],
+  },
+  wifi_disabled: {
+    title: 'ヘッドセットのWi-Fiがオフになっています',
+    hints: [
+      'ヘッドセットの設定でWi-Fiをオンにしてください',
+      'PCと同じWi-Fiネットワークに接続してください',
+    ],
+  },
+  wifi_not_connected: {
+    title: 'ヘッドセットがWi-Fiに接続されていません',
+    hints: ['ヘッドセットをPCと同じWi-Fiネットワークに接続してください'],
+  },
+  tcpip_failed: {
+    title: '無線ADBの切り替えに失敗しました',
+    hints: ['ヘッドセットを再起動してから再試行してください'],
+  },
+  wireless_refused: {
+    title: '無線接続が拒否されました',
+    hints: [
+      'ヘッドセットを再起動すると無線ADBが無効になります。USBケーブルで再セットアップしてください',
+    ],
+  },
+  wireless_unreachable: {
+    title: 'ヘッドセットに到達できません',
+    hints: [
+      'ヘッドセットの電源が入っており、スリープしていないか確認してください',
+      'PCとヘッドセットが同じWi-Fi（同一サブネット）にあるか確認してください',
+      'IPアドレスが変更されていないか確認してください',
+    ],
+  },
+  wireless_unauthorized: {
+    title: '無線ADBの認証に失敗しました',
+    hints: ['USBケーブルを接続して再度無線セットアップを実行してください'],
+  },
+  wireless_not_found: {
+    title: '無線デバイスが見つかりません',
+    hints: [
+      'IPアドレスが正しいか確認してください',
+      'USBケーブルで無線セットアップをやり直してください',
+    ],
+  },
+  adb_unavailable: {
+    title: 'ADBサーバーを起動できませんでした',
+    hints: [
+      '他のADBプロセスが競合していないか確認し、アプリを再起動してください',
+    ],
+  },
+  timeout: {
+    title: '接続処理がタイムアウトしました',
+    hints: [
+      'ネットワーク状態やケーブル接続を確認して再試行してください',
+    ],
+  },
+  already_running: {
+    title: 'スリープ回避が既に動作中です',
+    hints: ['停止してから再試行してください'],
+  },
+  invalid_ip: {
+    title: '無効なIPアドレスです',
+    hints: ['正しいIPv4アドレスを入力してください（例: 192.168.1.20）'],
+  },
+  multiple_pico: {
+    title: '複数のPICOデバイスが接続されています',
+    hints: ['対象外のデバイスを切断してください'],
+  },
+  device_lost: {
+    title: 'デバイスとの接続が切断されました',
+    hints: ['ヘッドセットの接続状態を確認してください'],
+  },
+  unknown: {
+    title: 'エラーが発生しました',
+    hints: ['接続を確認して再試行してください'],
+  },
+}
+
 const resources = {
   en: {
     translation: {
@@ -35,29 +235,35 @@ const resources = {
       log_getting_ip: 'Retrieving IP address from wlan0...',
       log_ip_found: 'Device IP found: {{ip}}',
       log_connecting: 'Connecting to {{ip}}:5555...',
-      log_wireless_complete: 'Wireless setup complete. You may now disconnect the USB cable.',
+      log_wireless_complete:
+        'Wireless setup complete. You may now disconnect the USB cable.',
       log_wireless_error: 'Wireless setup failed: {{error}}',
-      log_wireless_note: 'Note: Make sure your device is connected via USB before proceeding.',
+      log_wireless_note:
+        'Note: Make sure your device is connected via USB before proceeding.',
       wireless_status_loading: 'Setting up wireless connection...',
-      wireless_status_success: 'Wireless setup complete! You can now unplug the USB cable.',
+      wireless_status_success:
+        'Wireless setup complete! You can now unplug the USB cable.',
       wireless_status_error:
-        'Wireless setup failed. Please check the USB connection and try again.',
+        'Wireless setup failed. Please check the suggestions below.',
       wireless_connected: 'Connected wirelessly to {{ip}}',
       wired_connected: 'USB device connected',
       wired_status_loading: 'Checking USB connection...',
       wired_status_success: 'USB device detected successfully!',
-      wired_status_error: 'No USB device found. Please check your cable and try again.',
+      wired_status_error:
+        'No USB device found. Please check your cable and try again.',
       btn_reconnect: 'Reconnect / Re-setup',
       prompt_enter_ip: 'Enter the device IP address:',
       log_connecting_manual: 'Connecting to {{ip}}...',
       log_stopped_loop: 'Sleep prevention stopped.',
-      log_started_loop: 'Sleep prevention started (sending wake signal every {{interval}}s).',
+      log_started_loop:
+        'Sleep prevention started (sending wake signal every {{interval}}s).',
       error_prefix: 'Error: {{error}}',
       debug_mode: 'Debug Mode (Show event log)',
       log_debug_enabled: 'Debug mode enabled.',
       log_debug_disabled: 'Debug mode disabled.',
       log_wait_restart: 'Waiting for ADB to restart (5s)...',
-      log_retry_ip: 'Retrying IP retrieval ({{remaining}} attempts remaining)...',
+      log_retry_ip:
+        'Retrying IP retrieval ({{remaining}} attempts remaining)...',
       mode_select_title: 'Select Connection Mode',
       mode_wired: 'Wired (USB)',
       mode_wireless: 'Wireless (Wi-Fi)',
@@ -77,7 +283,8 @@ const resources = {
       theme_system: 'System',
       status_checking: 'Looking for device...',
       status_device_found: 'PICO 4 Ultra detected! Connecting...',
-      status_wrong_device: 'Detected {{model}} — waiting for a supported headset...',
+      status_wrong_device:
+        'Detected {{model}} — waiting for a supported headset...',
       status_waiting_usb: 'Please connect your headset via USB',
       force_proceed: 'Proceed Anyway',
       cancel: 'Cancel',
@@ -93,23 +300,36 @@ const resources = {
       device_checking_waiting: 'Waiting...',
       device_checking_detected: 'Detected: {{model}}',
       auto_connect_wired: 'Reconnecting via USB... (Attempt {{attempt}}/3)',
-      auto_connect_wireless: 'Reconnecting via Wireless ({{ip}})... (Attempt {{attempt}}/3)',
+      auto_connect_wireless:
+        'Reconnecting via Wireless ({{ip}})... (Attempt {{attempt}}/3)',
       log_auto_connect_success: 'Auto-connected to {{ip}} successfully.',
-      log_auto_connect_failed: 'Auto-connect to {{ip}} failed. Please set up manually.',
+      log_auto_connect_failed:
+        'Auto-connect to {{ip}} failed. Please set up manually.',
       auto_connect_failed_title: 'Auto-connect failed',
       auto_connect_failed_desc:
-        'Could not reconnect to {{ip}}. The device may be off or on a different network.',
+        'Could not reconnect to {{ip}}. Please follow the suggestions below.',
       auto_connect_success_title: 'Connected',
       auto_connect_success_desc: 'Reconnected to {{ip}} successfully.',
       btn_wireless_setup: 'Wireless Setup',
       btn_manual_setup: 'Set Up Manually',
       btn_try_again: 'Retry',
+      setup_step_usb: 'USB connection',
+      setup_step_authorized: 'USB debugging authorization',
+      setup_step_pico: 'Verify PICO 4 Ultra',
+      setup_step_wifi: 'Wi-Fi enabled & IP address',
+      setup_step_wireless: 'Wireless ADB connection',
+      setup_already_wireless:
+        'Already connected wirelessly — setup is not needed.',
+      setup_troubleshooting: 'Troubleshooting steps',
+      details_toggle: 'Technical Details',
+      errors: errorsEn,
     },
   },
   ja: {
     translation: {
       title: 'pico4u V睡ツール',
-      subtitle: 'V睡中にヘッドセットがスリープしてトラッキングがリセットされるのを防ぎます',
+      subtitle:
+        'V睡中にヘッドセットがスリープしてトラッキングがリセットされるのを防ぎます',
       instructions_header: '使い方',
       instruction_wired_label: '有線接続:',
       instruction_wired_text:
@@ -137,28 +357,35 @@ const resources = {
       log_getting_ip: 'wlan0からIPアドレスを取得中...',
       log_ip_found: 'デバイスのIPアドレス: {{ip}}',
       log_connecting: '{{ip}}:5555 に接続中...',
-      log_wireless_complete: '無線セットアップが完了しました。USBケーブルを外してください。',
+      log_wireless_complete:
+        '無線セットアップが完了しました。USBケーブルを外してください。',
       log_wireless_error: '無線セットアップに失敗しました: {{error}}',
-      log_wireless_note: '※ 先にデバイスをUSBで接続してから操作してください。',
+      log_wireless_note:
+        '※ 先にデバイスをUSBで接続してから操作してください。',
       wireless_status_loading: '無線接続をセットアップ中...',
-      wireless_status_success: '無線セットアップ完了！USBケーブルを外してください',
-      wireless_status_error: '無線セットアップに失敗しました。USB接続を確認して再試行してください',
+      wireless_status_success:
+        '無線セットアップ完了！USBケーブルを外してください',
+      wireless_status_error:
+        '無線セットアップに失敗しました。以下の確認手順をお試しください。',
       wireless_connected: '{{ip}} にワイヤレス接続中',
       wired_connected: 'USBデバイス接続中',
       wired_status_loading: 'USB接続を確認中...',
       wired_status_success: 'USBデバイスを検出しました！',
-      wired_status_error: 'USBデバイスが見つかりません。ケーブルを確認して再試行してください',
+      wired_status_error:
+        'USBデバイスが見つかりません。ケーブルを確認して再試行してください',
       btn_reconnect: '再接続 / 再セットアップ',
       prompt_enter_ip: 'デバイスのIPアドレスを入力:',
       log_connecting_manual: '{{ip}} に接続中...',
       log_stopped_loop: 'スリープ回避を停止しました',
-      log_started_loop: 'スリープ回避を開始しました（{{interval}}秒間隔で信号を送信）',
+      log_started_loop:
+        'スリープ回避を開始しました（{{interval}}秒間隔で信号を送信）',
       error_prefix: 'エラー: {{error}}',
       debug_mode: 'デバッグモード（イベントログを表示）',
       log_debug_enabled: 'デバッグモードを有効にしました。',
       log_debug_disabled: 'デバッグモードを無効にしました。',
       log_wait_restart: 'ADBの再起動を待機中（5秒）...',
-      log_retry_ip: 'IPアドレスの取得をリトライ中（残り{{remaining}}回）...',
+      log_retry_ip:
+        'IPアドレスの取得をリトライ中（残り{{remaining}}回）...',
       mode_select_title: '接続方法を選択',
       mode_wired: '有線 (USB)',
       mode_wireless: '無線 (Wi-Fi)',
@@ -178,7 +405,8 @@ const resources = {
       theme_system: 'システムに合わせる',
       status_checking: 'デバイスを探しています...',
       status_device_found: 'PICO 4 Ultra を検出しました！接続中...',
-      status_wrong_device: '{{model}} を検出 — 対応ヘッドセットの接続を待っています...',
+      status_wrong_device:
+        '{{model}} を検出 — 対応ヘッドセットの接続を待っています...',
       status_waiting_usb: 'ヘッドセットをUSBで接続してください',
       force_proceed: 'このまま続行',
       cancel: 'キャンセル',
@@ -200,12 +428,22 @@ const resources = {
         '{{ip}} への自動接続に失敗しました。手動でセットアップしてください。',
       auto_connect_failed_title: '自動接続に失敗',
       auto_connect_failed_desc:
-        '{{ip}} に再接続できませんでした。デバイスの電源が切れているか、別のネットワークにある可能性があります。',
+        '{{ip}} に再接続できませんでした。以下の確認手順をお試しください。',
       auto_connect_success_title: '接続済み',
       auto_connect_success_desc: '{{ip}} に再接続しました。',
       btn_wireless_setup: '無線セットアップ',
       btn_manual_setup: '手動セットアップ',
       btn_try_again: '再試行',
+      setup_step_usb: 'USB接続',
+      setup_step_authorized: 'USBデバッグの許可',
+      setup_step_pico: 'PICO 4 Ultra を確認',
+      setup_step_wifi: 'Wi-Fi 有効・IP取得',
+      setup_step_wireless: '無線ADB接続確認',
+      setup_already_wireless:
+        '既に無線接続済みです。セットアップは不要です。',
+      setup_troubleshooting: '確認手順',
+      details_toggle: '詳細情報',
+      errors: errorsJa,
     },
   },
 }
