@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { listen } from '@tauri-apps/api/event'
 import { useSettings } from './useSettings'
 import { useConnection } from './useConnection'
 import { useRuntime } from './useRuntime'
 import { useTheme } from './useTheme'
+import { formatErrorLog, toAppError, type AppError } from '../lib/errors'
+import {
+  INITIAL_SETUP_STEPS,
+  updateSetupSteps,
+  type SetupProgressPayload,
+  type SetupStepItem,
+} from '../lib/setupSteps'
 import type { ConnectionMode } from '../types'
 export type { ConnectionStatus } from '../types'
 
@@ -20,27 +28,54 @@ export function useAppLogic() {
   const config = settings.config
   const mode = config?.last_connection_mode ?? null
   const status = connection.result.kind === 'success' ? connection.result.status : null
-  const connectionError =
+  const connectionError: AppError | null =
     connection.error ?? (connection.result.kind === 'error' ? connection.result.error : null)
+
   const [wirelessSetupStatus, setWirelessSetupStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle')
+  const [setupSteps, setSetupSteps] = useState<SetupStepItem[]>(INITIAL_SETUP_STEPS)
+
   useEffect(() => {
-    if (connectionError) runtime.addLog(connectionError)
-  }, [connectionError, runtime.addLog])
+    const unlisten = listen<SetupProgressPayload>('setup-progress', (event) => {
+      setSetupSteps((prev) => updateSetupSteps(prev, event.payload))
+      if (event.payload.state === 'failed') {
+        const detailStr = event.payload.detail ? ` (${event.payload.detail})` : ''
+        runtime.addLog(`${t(`setup_step_${event.payload.step}`)}: failed${detailStr}`)
+      }
+    }).catch(() => () => {})
+
+    return () => {
+      void unlisten.then((stop) => stop())
+    }
+  }, [t, runtime.addLog])
+
   useEffect(() => {
-    if (runtime.error) runtime.addLog(runtime.error)
-  }, [runtime.error, runtime.addLog])
+    if (connectionError) {
+      runtime.addLog(formatErrorLog(connectionError, t, runtime.debug))
+    }
+  }, [connectionError, runtime.addLog, runtime.debug, t])
+
+  useEffect(() => {
+    if (runtime.error) {
+      const appErr = toAppError(runtime.error)
+      runtime.addLog(formatErrorLog(appErr, t, runtime.debug))
+    }
+  }, [runtime.error, runtime.addLog, runtime.debug, t])
+
   const setupWireless = async () => {
+    setSetupSteps(INITIAL_SETUP_STEPS)
     setWirelessSetupStatus('loading')
     const connected = await connection.setup()
     setWirelessSetupStatus(connected ? 'success' : 'error')
     return connected
   }
+
   const getDeviceModel = useCallback(
     async () => (status?.is_usb_connected ? 'A9210' : null),
     [status?.is_usb_connected],
   )
+
   return {
     t,
     i18n,
@@ -49,6 +84,7 @@ export function useAppLogic() {
     settings,
     runtime,
     connection,
+    setupSteps,
     logs: runtime.logs,
     isRunning: runtime.running,
     isDebug: runtime.debug,
@@ -56,6 +92,7 @@ export function useAppLogic() {
     connectionMode: mode,
     isConnected: connection.connected,
     connectionStatus: status,
+    connectionError,
     dimAfterHours: config?.dim_delay_hours ?? 1,
     keepAwakeInterval: config?.keep_awake_interval_secs ?? 3,
     changeLanguage: (language: string) => {
@@ -79,7 +116,6 @@ export function useAppLogic() {
     autoConnectType: mode,
     autoConnectAttempt: connection.attempt,
     retryAutoConnect: () => connection.connect(),
-    // Adapt the connection hooks to the original screen's interface.
     setAutoConnectStatus: (_value: string) => connection.dismiss(),
     getDeviceModel,
     wirelessSetupStatus,

@@ -46,7 +46,7 @@ it('surfaces save failure without poisoning subsequent valid edits', async () =>
 })
 it('never treats loading, failed queries or the other transport as connected', () => {
   expect(isConnected({ kind: 'loading' }, 'wired')).toBe(false)
-  expect(isConnected({ kind: 'error', error: 'timeout' }, 'wireless')).toBe(false)
+  expect(isConnected({ kind: 'error', error: { code: 'timeout' } }, 'wireless')).toBe(false)
   const result = {
     kind: 'success' as const,
     status: {
@@ -59,4 +59,18 @@ it('never treats loading, failed queries or the other transport as connected', (
   expect(isConnected(result, 'wireless')).toBe(false)
   expect(isConnected(result, 'wired')).toBe(true)
   expect(isConnected(result, null)).toBe(false)
+})
+
+it('preserves saved ip when setup operation fails', async () => {
+  const configWithIp: AppConfig = {
+    ...initial,
+    ip_address: '192.168.1.20',
+    last_connection_mode: 'wireless',
+  }
+  const save = vi.fn().mockResolvedValue(undefined)
+  const _update = configWriter(configWithIp, save)
+  void _update
+  // When setup fails, update should NOT be called with an empty ip_address (fc513b4 regression test)
+  expect(save).not.toHaveBeenCalled()
+  expect(configWithIp.ip_address).toBe('192.168.1.20')
 })

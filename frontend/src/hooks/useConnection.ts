@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { poll, retry } from '../lib/async'
+import { toAppError, type AppError } from '../lib/errors'
 import type { AppConfig, ConnectionMode, ConnectionResult } from '../types'
 import { isConnected } from '../types'
 
@@ -15,13 +16,14 @@ export function useConnection(
     'idle' | 'connecting' | 'success' | 'failed' | 'skipped'
   >('idle')
   const [attempt, setAttempt] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const lifecycle = useRef<AbortController | null>(null)
   const lock = useRef(false)
   const initial = useRef(false)
   const revision = useRef(0)
   const mode = config?.last_connection_mode ?? null
   const ip = config?.ip_address ?? ''
+
   useEffect(() => {
     const controller = new AbortController()
     lifecycle.current = controller
@@ -31,6 +33,7 @@ export function useConnection(
       lock.current = false
     }
   }, [])
+
   useEffect(() => {
     const controller = new AbortController()
     setResult({ kind: 'loading' })
@@ -48,7 +51,7 @@ export function useConnection(
           }
         },
         (e) => {
-          if (!lock.current) setResult({ kind: 'error', error: String(e) })
+          if (!lock.current) setResult({ kind: 'error', error: toAppError(e) })
         },
         controller.signal,
       )
@@ -78,8 +81,9 @@ export function useConnection(
         return connected
       } catch (e) {
         if (!signal.aborted) {
-          setError(String(e))
-          setResult({ kind: 'error', error: String(e) })
+          const appErr = toAppError(e)
+          setError(appErr)
+          setResult({ kind: 'error', error: appErr })
           if (automatic) setAutoStatus('failed')
         }
         return false
@@ -96,8 +100,10 @@ export function useConnection(
   const connect = useCallback(
     (targetMode: ConnectionMode = mode ?? 'wired', targetIp = ip) =>
       perform(async (signal) => {
-        // Save the chosen target first so polling and the next start agree.
-        const next = await update({ last_connection_mode: targetMode, ip_address: targetIp.trim() })
+        const next = await update({
+          last_connection_mode: targetMode,
+          ip_address: targetIp.trim(),
+        })
         await retry(() => api.connect(targetMode, next.ip_address, signal), signal, setAttempt)
         return next
       }, true),
@@ -118,11 +124,16 @@ export function useConnection(
       setAutoStatus('skipped')
       return update({ last_connection_mode: nextMode })
     })
+
   const setup = () =>
     perform(async (signal) => {
-      const address = await api.setup(signal)
-      return update({ last_connection_mode: 'wireless', ip_address: address })
+      const outcome = await api.setup(signal)
+      return update({
+        last_connection_mode: 'wireless',
+        ip_address: outcome.ip,
+      })
     })
+
   return {
     result,
     busy,

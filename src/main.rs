@@ -7,6 +7,7 @@ mod adb_client;
 mod commands;
 mod config;
 mod connection;
+mod error;
 mod runtime;
 mod state;
 
