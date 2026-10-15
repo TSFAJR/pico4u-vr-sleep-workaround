@@ -109,10 +109,7 @@ export function ConnectionPanel() {
                 </Button>
 
                 {wiredSetupStatus === 'error' && (
-                  <ErrorCard
-                    error={connectionError}
-                    fallbackMessage={t('wired_status_error')}
-                  />
+                  <ErrorCard error={connectionError} fallbackMessage={t('wired_status_error')} />
                 )}
                 {wiredSetupStatus === 'success' && (
                   <div className='flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 animate-fadeIn'>
@@ -137,10 +134,7 @@ export function ConnectionPanel() {
                 )}
 
                 {wirelessSetupStatus === 'error' && (
-                  <ErrorCard
-                    error={connectionError}
-                    fallbackMessage={t('wireless_status_error')}
-                  />
+                  <ErrorCard error={connectionError} fallbackMessage={t('wireless_status_error')} />
                 )}
 
                 {wirelessSetupStatus === 'success' && (
