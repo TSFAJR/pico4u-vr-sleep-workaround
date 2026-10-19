@@ -90,8 +90,34 @@ pub async fn try_auto_connect(
             let target = connection::endpoint(&ip)?;
             let reply = run_adb_host_command(Some(&app), &format!("host:connect:{target}")).await?;
             classify_connect_reply(&reply)?;
+            connection::require_target(&app, mode, &ip).await?;
+        } else {
+            emit_progress(&app, SetupStep::Usb, StepState::Running, None);
+            match connection::require_target(&app, mode, &ip).await {
+                Ok(_) => {
+                    emit_progress(&app, SetupStep::Usb, StepState::Ok, None);
+                    emit_progress(&app, SetupStep::Authorized, StepState::Ok, None);
+                    emit_progress(&app, SetupStep::Pico, StepState::Ok, None);
+                }
+                Err(err) => {
+                    match err.code {
+                        ErrorCode::UsbUnauthorized => {
+                            emit_progress(&app, SetupStep::Usb, StepState::Ok, None);
+                            emit_progress(&app, SetupStep::Authorized, StepState::Failed, None);
+                        }
+                        ErrorCode::NotPico | ErrorCode::MultiplePico => {
+                            emit_progress(&app, SetupStep::Usb, StepState::Ok, None);
+                            emit_progress(&app, SetupStep::Authorized, StepState::Ok, None);
+                            emit_progress(&app, SetupStep::Pico, StepState::Failed, None);
+                        }
+                        _ => {
+                            emit_progress(&app, SetupStep::Usb, StepState::Failed, None);
+                        }
+                    }
+                    return Err(err);
+                }
+            }
         }
-        connection::require_target(&app, mode, &ip).await?;
         Ok(mode)
     })
     .await

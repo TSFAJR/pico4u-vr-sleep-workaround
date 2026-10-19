@@ -63,12 +63,57 @@ export function useAppLogic() {
     }
   }, [runtime.error, runtime.addLog, runtime.debug, t])
 
+  const resetSetup = useCallback(() => {
+    setSetupSteps(INITIAL_SETUP_STEPS)
+    setWirelessSetupStatus('idle')
+    connection.clearError()
+  }, [connection.clearError])
+
   const setupWireless = async () => {
     setSetupSteps(INITIAL_SETUP_STEPS)
     setWirelessSetupStatus('loading')
+    runtime.addLog(t('log_wireless_init'))
     const connected = await connection.setup()
     setWirelessSetupStatus(connected ? 'success' : 'error')
+    if (connected) {
+      runtime.addLog(t('log_wireless_complete'))
+    }
     return connected
+  }
+
+  const checkDevices = async () => {
+    setSetupSteps(INITIAL_SETUP_STEPS)
+    runtime.addLog(t('log_checking_devices'))
+    const connected = await connection.connect('wired')
+    if (connected) {
+      runtime.addLog(t('wired_status_success'))
+    }
+    return connected
+  }
+
+  const connectManual = async (ip?: string) => {
+    const address = ip ?? window.prompt(t('prompt_enter_ip'), config?.ip_address ?? '')
+    if (!address) return false
+    runtime.addLog(t('log_connecting_manual', { ip: address }))
+    const connected = await connection.connect('wireless', address)
+    if (connected) {
+      runtime.addLog(t('log_auto_connect_success', { ip: address }))
+    }
+    return connected
+  }
+
+  const toggleKeepAwake = async () => {
+    const wasRunning = runtime.running
+    const interval = config?.keep_awake_interval_secs ?? 3
+    await runtime.toggle(mode, connection.connected, connection.busy || settings.isSaving)
+    if (!runtime.error) {
+      runtime.addLog(wasRunning ? t('log_stopped_loop') : t('log_started_loop', { interval }))
+    }
+  }
+
+  const toggleDebugMode = async (enabled: boolean) => {
+    await runtime.toggleDebug(enabled)
+    runtime.addLog(t(enabled ? 'log_debug_enabled' : 'log_debug_disabled'))
   }
 
   const getDeviceModel = useCallback(
@@ -85,9 +130,12 @@ export function useAppLogic() {
     runtime,
     connection,
     setupSteps,
+    resetSetup,
     logs: runtime.logs,
     isRunning: runtime.running,
     isDebug: runtime.debug,
+    isConnecting: connection.busy,
+    runtimeError: runtime.error ? toAppError(runtime.error) : null,
     deviceIp: config?.ip_address ?? '',
     connectionMode: mode,
     isConnected: connection.connected,
@@ -98,24 +146,20 @@ export function useAppLogic() {
     changeLanguage: (language: string) => {
       void i18n.changeLanguage(language)
     },
-    toggleDebugMode: runtime.toggleDebug,
+    toggleDebugMode,
     handleModeSelect: (next: ConnectionMode) => connection.selectMode(next),
     setConnectionMode: connection.selectMode,
-    checkDevices: () => connection.connect('wired'),
+    checkDevices,
     setupWireless,
-    connectManual: async (ip?: string) => {
-      const address = ip ?? window.prompt(t('prompt_enter_ip'), config?.ip_address ?? '')
-      return address ? connection.connect('wireless', address) : false
-    },
-    toggleKeepAwake: () =>
-      runtime.toggle(mode, connection.connected, connection.busy || settings.isSaving),
+    connectManual,
+    toggleKeepAwake,
     updateDimDelay: (hours: number) => settings.update({ dim_delay_hours: hours }),
     updateKeepAwakeInterval: (seconds: number) =>
       settings.update({ keep_awake_interval_secs: seconds }),
     autoConnectStatus: connection.autoStatus,
     autoConnectType: mode,
     autoConnectAttempt: connection.attempt,
-    retryAutoConnect: () => connection.connect(),
+    retryAutoConnect: () => connection.connect(mode ?? 'wired', config?.ip_address ?? '', true),
     setAutoConnectStatus: (_value: string) => connection.dismiss(),
     getDeviceModel,
     wirelessSetupStatus,

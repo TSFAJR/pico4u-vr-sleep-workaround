@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@charcoal-ui/react'
 import { useAppContext } from '../context/AppContext'
 import { AppHeader } from './ui/AppHeader'
@@ -18,6 +18,7 @@ export function MainView() {
   const {
     t,
     connectionMode,
+    isRunning,
     autoConnectStatus,
     setAutoConnectStatus,
     retryAutoConnect,
@@ -25,11 +26,19 @@ export function MainView() {
     autoConnectAttempt,
     deviceIp,
     connectionError,
+    resetSetup,
   } = useAppContext()
 
   const [screen, setScreen] = useState<Screen>(connectionMode ? 'operate' : 'mode')
   const [targetMode, setTargetMode] = useState<ConnectionMode>(connectionMode ?? 'wireless')
   const [activeSheet, setActiveSheet] = useState<SheetType>(null)
+
+  useEffect(() => {
+    if ((autoConnectStatus === 'success' || isRunning) && connectionMode) {
+      setTargetMode(connectionMode)
+      setScreen('operate')
+    }
+  }, [autoConnectStatus, isRunning, connectionMode])
 
   // ─── Auto-connecting / Failed State ───
   if (
@@ -38,7 +47,7 @@ export function MainView() {
     autoConnectStatus === 'failed'
   ) {
     return (
-      <div className='flex flex-col h-screen bg-[var(--app-bg)] text-[var(--app-text)]'>
+      <div className='relative flex flex-col h-screen bg-[var(--app-bg)] text-[var(--app-text)]'>
         <AppHeader onOpenSettings={() => setActiveSheet('settings')} />
 
         <div className='flex-1 flex flex-col items-center justify-center px-5'>
@@ -48,12 +57,14 @@ export function MainView() {
                 <span className='w-8 h-8 border-3 border-gray-200 dark:border-gray-700 border-t-brand rounded-full animate-spin' />
                 <div>
                   <p className='text-sm font-semibold text-[var(--app-text)]'>
-                    {autoConnectType === 'wired'
-                      ? t('auto_connect_wired', { attempt: autoConnectAttempt })
-                      : t('auto_connect_wireless', {
-                          ip: deviceIp,
-                          attempt: autoConnectAttempt,
-                        })}
+                    {autoConnectStatus === 'idle' || !autoConnectType
+                      ? t('status_checking')
+                      : autoConnectType === 'wired'
+                        ? t('auto_connect_wired', { attempt: Math.max(1, autoConnectAttempt) })
+                        : t('auto_connect_wireless', {
+                            ip: deviceIp,
+                            attempt: Math.max(1, autoConnectAttempt),
+                          })}
                   </p>
                   {deviceIp && autoConnectType === 'wireless' && (
                     <p className='mt-1 text-xs font-mono text-[var(--app-text-muted)]'>
@@ -79,6 +90,7 @@ export function MainView() {
                   </Button>
                   <Button
                     onClick={() => {
+                      resetSetup()
                       setAutoConnectStatus('skipped')
                       setTargetMode('wireless')
                       setScreen('prepare')
@@ -90,7 +102,11 @@ export function MainView() {
                   </Button>
                   <button
                     type='button'
-                    onClick={() => setAutoConnectStatus('skipped')}
+                    onClick={() => {
+                      resetSetup()
+                      setAutoConnectStatus('skipped')
+                      setScreen('mode')
+                    }}
                     className='text-xs text-[var(--app-text-muted)] hover:text-[var(--app-text)] transition-colors py-1 cursor-pointer'
                   >
                     {t('btn_manual_setup')}
@@ -114,29 +130,39 @@ export function MainView() {
 
   // ─── Main Wizard Flow ───
   return (
-    <div className='flex flex-col h-screen bg-[var(--app-bg)] text-[var(--app-text)]'>
+    <div className='relative flex flex-col h-screen bg-[var(--app-bg)] text-[var(--app-text)]'>
       <AppHeader onOpenSettings={() => setActiveSheet('settings')} />
 
       {screen === 'mode' && (
         <ModeSelectScreen
           onNext={(mode) => {
+            resetSetup()
             setTargetMode(mode)
             setScreen('prepare')
           }}
+          onBack={() => setScreen('operate')}
         />
       )}
 
       {screen === 'prepare' && (
         <PrepareScreen
           mode={targetMode}
-          onBack={() => setScreen('mode')}
+          onBack={() => {
+            resetSetup()
+            setScreen('mode')
+          }}
           onSuccess={() => setScreen('operate')}
         />
       )}
 
       {screen === 'operate' && (
         <OperateScreen
-          onChangeConnection={() => setScreen('mode')}
+          onChangeConnection={() => {
+            if (!isRunning) {
+              resetSetup()
+              setScreen('mode')
+            }
+          }}
           onOpenLogs={() => setActiveSheet('logs')}
         />
       )}

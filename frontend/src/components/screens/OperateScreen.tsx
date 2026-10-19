@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAppContext } from '../../context/AppContext'
 import { ConnectionChip } from '../ui/ConnectionChip'
 import { PowerButton } from '../ui/PowerButton'
+import { ErrorCard } from '../ErrorCard'
 
 interface OperateScreenProps {
   onChangeConnection: () => void
@@ -15,9 +16,13 @@ export function OperateScreen({ onChangeConnection, onOpenLogs }: OperateScreenP
     deviceIp,
     isConnected,
     isRunning,
+    isDebug,
     toggleKeepAwake,
     keepAwakeInterval,
     dimAfterHours,
+    wirelessSetupStatus,
+    setupSteps,
+    runtimeError,
   } = useAppContext()
 
   // Elapsed time tracker while running
@@ -47,36 +52,55 @@ export function OperateScreen({ onChangeConnection, onOpenLogs }: OperateScreenP
     return `${m}:${String(s).padStart(2, '0')}`
   }
 
+  const showWirelessSetupHint =
+    !isRunning && isConnected && connectionMode === 'wireless' && wirelessSetupStatus === 'success'
+  const isAlreadyWireless = setupSteps[0]?.detail === 'already_connected'
+
   return (
     <div className='flex-1 flex flex-col justify-between items-center px-5 py-4 animate-fadeIn select-none'>
       {/* Top Connection Chip */}
-      <div className='pt-2'>
+      <div className='flex flex-col items-center gap-2'>
         <ConnectionChip mode={connectionMode} ip={deviceIp} connected={isConnected} />
+        <p
+          className={`text-[11px] leading-4 text-brand font-medium text-center ${
+            showWirelessSetupHint ? 'visible' : 'invisible'
+          }`}
+        >
+          {isAlreadyWireless ? t('setup_already_wireless') : t('wireless_status_success')}
+        </p>
       </div>
 
       {/* Center Action Area */}
-      <div className='flex flex-col items-center justify-center my-auto'>
+      <div className='flex flex-col items-center justify-center my-auto w-full'>
         <PowerButton
           isRunning={isRunning}
           onClick={toggleKeepAwake}
           disabled={!isConnected && !isRunning}
         />
 
-        {/* Status text */}
+        {/* Status text (fixed two-line height to prevent PowerButton shift) */}
         <div className='mt-3 text-center'>
-          <p className='text-xs font-semibold text-[var(--app-text)]'>
+          <p className='text-xs leading-4 font-semibold text-[var(--app-text)]'>
             {isRunning
-              ? `${keepAwakeInterval}秒ごとにスリープ回避信号を送信中`
+              ? t('operate_running_desc', { interval: keepAwakeInterval })
               : t('status_stopped')}
           </p>
 
-          {isRunning && (
-            <p className='mt-1 text-[11px] text-[var(--app-text-muted)]'>
-              経過 {formatElapsed(elapsedSeconds)}
-              {dimAfterHours > 0 && ` · ${dimAfterHours}時間後に画面を暗くする`}
-            </p>
-          )}
+          <p
+            className={`mt-1 text-[11px] leading-4 text-[var(--app-text-muted)] ${
+              isRunning ? 'visible' : 'invisible'
+            }`}
+          >
+            {t('operate_elapsed', { time: formatElapsed(elapsedSeconds) })}
+            {dimAfterHours > 0 && ` · ${t('operate_dim_after', { hours: dimAfterHours })}`}
+          </p>
         </div>
+
+        {runtimeError && !isRunning && (
+          <div className='mt-3 w-full'>
+            <ErrorCard error={runtimeError} />
+          </div>
+        )}
       </div>
 
       {/* Bottom links */}
@@ -84,18 +108,21 @@ export function OperateScreen({ onChangeConnection, onOpenLogs }: OperateScreenP
         <button
           type='button'
           onClick={onChangeConnection}
-          className='hover:text-[var(--app-text)] transition-colors cursor-pointer py-1'
+          disabled={isRunning}
+          className='hover:text-[var(--app-text)] transition-colors cursor-pointer py-1 disabled:opacity-40 disabled:cursor-not-allowed'
         >
-          接続を変更
+          {t('btn_change_connection')}
         </button>
 
-        <button
-          type='button'
-          onClick={onOpenLogs}
-          className='hover:text-[var(--app-text)] transition-colors cursor-pointer py-1'
-        >
-          {t('tab_logs')}
-        </button>
+        {isDebug && (
+          <button
+            type='button'
+            onClick={onOpenLogs}
+            className='hover:text-[var(--app-text)] transition-colors cursor-pointer py-1'
+          >
+            {t('tab_logs')}
+          </button>
+        )}
       </div>
     </div>
   )

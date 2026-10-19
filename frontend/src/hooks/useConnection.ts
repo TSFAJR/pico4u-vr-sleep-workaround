@@ -98,26 +98,36 @@ export function useConnection(
   )
 
   const connect = useCallback(
-    (targetMode: ConnectionMode = mode ?? 'wired', targetIp = ip) =>
+    (targetMode: ConnectionMode = mode ?? 'wired', targetIp = ip, automatic = false) =>
       perform(async (signal) => {
-        const next = await update({
+        const trimmedIp = targetIp.trim()
+        if (automatic) {
+          await retry(() => api.connect(targetMode, trimmedIp, signal), signal, setAttempt)
+        } else {
+          await api.connect(targetMode, trimmedIp, signal)
+        }
+        return update({
           last_connection_mode: targetMode,
-          ip_address: targetIp.trim(),
+          ip_address: trimmedIp,
         })
-        await retry(() => api.connect(targetMode, next.ip_address, signal), signal, setAttempt)
-        return next
-      }, true),
+      }, automatic),
     [perform, mode, ip, update],
   )
 
   useEffect(() => {
     if (!config || initial.current) return
     initial.current = true
-    if (mode && (mode === 'wired' || ip)) void connect(mode, ip)
+    if (running) setAutoStatus('success')
+    else if (mode && (mode === 'wired' || ip)) void connect(mode, ip, true)
     else setAutoStatus('skipped')
-  }, [config, connect, mode, ip])
+  }, [config, connect, mode, ip, running])
 
   const dismiss = useCallback(() => setAutoStatus('skipped'), [])
+
+  const clearError = useCallback(() => {
+    setError(null)
+    setResult((prev) => (prev.kind === 'error' ? { kind: 'loading' } : prev))
+  }, [])
 
   const selectMode = (nextMode: ConnectionMode | null) =>
     perform(async () => {
@@ -144,6 +154,7 @@ export function useConnection(
     selectMode,
     setup,
     dismiss,
+    clearError,
     connected: isConnected(result, mode),
   }
 }
