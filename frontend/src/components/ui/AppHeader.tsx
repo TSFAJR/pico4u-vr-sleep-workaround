@@ -15,11 +15,15 @@ export function AppHeader({ onOpenSettings }: AppHeaderProps) {
 
   useEffect(() => {
     document.title = windowTitle
-    void getCurrentWindow()
-      .setTitle(windowTitle)
-      .catch(() => {
-        // Ignore when running outside Tauri webview
-      })
+    try {
+      void getCurrentWindow()
+        .setTitle(windowTitle)
+        .catch(() => {
+          // Ignore when running outside Tauri webview
+        })
+    } catch {
+      // Ignore when running outside Tauri webview
+    }
   }, [windowTitle])
 
   return (

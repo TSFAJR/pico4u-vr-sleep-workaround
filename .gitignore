@@ -15,3 +15,5 @@ node_modules
 # Local agent notes and package-manager bootstrap
 .antigravitycli/
 .tools/
+mise.toml
+docs/images/
