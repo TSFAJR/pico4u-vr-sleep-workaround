@@ -1,7 +1,7 @@
 {
   "build": {
-    "beforeDevCommand": "pnpm -C frontend dev",
-    "beforeBuildCommand": "pnpm -C frontend build",
+    "beforeDevCommand": "node scripts/frontend.mjs dev",
+    "beforeBuildCommand": "node scripts/frontend.mjs build",
     "frontendDist": "frontend/dist",
     "devUrl": "http://localhost:5173"
   },
@@ -27,7 +27,7 @@
     ]
   },
   "productName": "pico4u-vr-sleep-workaround",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "identifier": "com.tauri.pico4uvrsleepworkaround",
   "plugins": {},
   "app": {
