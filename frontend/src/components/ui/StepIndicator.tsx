@@ -24,7 +24,7 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
   const currentIndex = getStepIndex(currentStep)
 
   return (
-    <div className='flex items-center justify-between px-6 py-2 shrink-0'>
+    <div className='flex items-center justify-between px-10 py-1.5 shrink-0'>
       {steps.map((step, idx) => {
         const isDone = idx < currentIndex
         const isActive = idx === currentIndex

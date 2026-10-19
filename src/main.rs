@@ -20,6 +20,14 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(AppState::default())
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let suffix = if cfg!(debug_assertions) { "-dev" } else { "" };
+                let title = format!("pico4u V睡ツール v{}{}", env!("CARGO_PKG_VERSION"), suffix);
+                let _ = window.set_title(&title);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             check_connection_status,
             try_auto_connect,
