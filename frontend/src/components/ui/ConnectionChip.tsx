@@ -1,4 +1,6 @@
+import { useAppContext } from '../../context/AppContext'
 import type { ConnectionMode } from '../../types'
+import { UsbIcon } from './UsbIcon'
 
 interface ConnectionChipProps {
   mode: ConnectionMode | null
@@ -7,6 +9,8 @@ interface ConnectionChipProps {
 }
 
 export function ConnectionChip({ mode, ip, connected }: ConnectionChipProps) {
+  const { t } = useAppContext()
+
   return (
     <div className='inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-black/5 dark:bg-white/10 text-[var(--app-text)] border border-[var(--app-border)] shadow-2xs'>
       <span
@@ -21,6 +25,9 @@ export function ConnectionChip({ mode, ip, connected }: ConnectionChipProps) {
           fill='none'
           stroke='currentColor'
           strokeWidth='2'
+          strokeLinecap='round'
+          strokeLinejoin='round'
+          aria-hidden='true'
         >
           <path d='M5 12.55a11 11 0 0 1 14.08 0' />
           <path d='M1.42 9a16 16 0 0 1 21.16 0' />
@@ -28,23 +35,16 @@ export function ConnectionChip({ mode, ip, connected }: ConnectionChipProps) {
           <line x1='12' y1='20' x2='12.01' y2='20' strokeWidth='3' />
         </svg>
       ) : (
-        <svg
-          className='w-3.5 h-3.5 opacity-80'
-          viewBox='0 0 24 24'
-          fill='none'
-          stroke='currentColor'
-          strokeWidth='2'
-        >
-          <circle cx='12' cy='12' r='2' />
-          <path d='M12 2v8M12 14v8M8 6h8M8 18h8' />
-        </svg>
+        <UsbIcon className='w-3.5 h-3.5 opacity-80' />
       )}
       <span>
         {connected
           ? mode === 'wireless'
-            ? `無線接続中${ip ? ` · ${ip}` : ''}`
-            : 'USB接続中'
-          : '未接続'}
+            ? ip
+              ? t('chip_wireless_connected_ip', { ip })
+              : t('chip_wireless_connected')
+            : t('chip_wired_connected')
+          : t('chip_disconnected')}
       </span>
     </div>
   )

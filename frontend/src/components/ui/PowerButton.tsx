@@ -1,3 +1,5 @@
+import { useAppContext } from '../../context/AppContext'
+
 interface PowerButtonProps {
   isRunning: boolean
   onClick: () => void
@@ -5,13 +7,15 @@ interface PowerButtonProps {
 }
 
 export function PowerButton({ isRunning, onClick, disabled }: PowerButtonProps) {
+  const { t } = useAppContext()
+
   return (
     <div className='flex flex-col items-center justify-center my-3'>
       <button
         type='button'
         onClick={onClick}
         disabled={disabled}
-        aria-label={isRunning ? 'スリープ回避 停止' : 'スリープ回避 開始'}
+        aria-label={isRunning ? t('btn_stop_keep_alive') : t('btn_start_keep_alive')}
         className={`w-44 h-44 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer select-none active:scale-95 relative ${
           disabled
             ? 'opacity-40 cursor-not-allowed bg-gray-200 dark:bg-gray-800 text-gray-400'
@@ -33,10 +37,10 @@ export function PowerButton({ isRunning, onClick, disabled }: PowerButtonProps) 
         </div>
 
         <span className='text-xl font-bold tracking-wider leading-none'>
-          {isRunning ? '動作中' : '開始'}
+          {isRunning ? t('status_running') : t('power_btn_start')}
         </span>
         <span className='text-[11px] mt-1.5 opacity-80 font-medium'>
-          {isRunning ? 'タップで停止' : 'スリープ回避を開始'}
+          {isRunning ? t('power_btn_tap_to_stop') : t('power_btn_tap_to_start')}
         </span>
       </button>
     </div>
