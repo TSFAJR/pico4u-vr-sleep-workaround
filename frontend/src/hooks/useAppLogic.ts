@@ -6,6 +6,7 @@ import { useConnection } from './useConnection'
 import { useRuntime } from './useRuntime'
 import { useTheme } from './useTheme'
 import { formatErrorLog, toAppError, type AppError } from '../lib/errors'
+import { normalizeLanguage } from '../lib/language'
 import {
   INITIAL_SETUP_STEPS,
   updateSetupSteps,
@@ -41,7 +42,9 @@ export function useAppLogic() {
       setSetupSteps((prev) => updateSetupSteps(prev, event.payload))
       if (event.payload.state === 'failed') {
         const detailStr = event.payload.detail ? ` (${event.payload.detail})` : ''
-        runtime.addLog(`${t(`setup_step_${event.payload.step}`)}: failed${detailStr}`)
+        runtime.addLog(
+          `${t('log_setup_step_failed', { step: t(`setup_step_${event.payload.step}`) })}${detailStr}`,
+        )
       }
     }).catch(() => () => {})
 
@@ -144,7 +147,7 @@ export function useAppLogic() {
     dimAfterHours: config?.dim_delay_hours ?? 1,
     keepAwakeInterval: config?.keep_awake_interval_secs ?? 3,
     changeLanguage: (language: string) => {
-      void i18n.changeLanguage(language)
+      void i18n.changeLanguage(normalizeLanguage(language))
     },
     toggleDebugMode,
     handleModeSelect: (next: ConnectionMode) => connection.selectMode(next),

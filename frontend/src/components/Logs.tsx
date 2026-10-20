@@ -1,7 +1,7 @@
 import { useAppContext } from '../context/AppContext'
 
 export function Logs() {
-  const { logs } = useAppContext()
+  const { logs, t } = useAppContext()
 
   return (
     <div className='flex flex-col gap-3'>
@@ -11,7 +11,7 @@ export function Logs() {
             {log}
           </div>
         ))}
-        {logs.length === 0 && <div className='text-gray-500 italic'>No logs available.</div>}
+        {logs.length === 0 && <div className='text-gray-500 italic'>{t('logs_empty')}</div>}
       </div>
     </div>
   )

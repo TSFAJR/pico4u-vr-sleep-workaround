@@ -1,6 +1,9 @@
 import i18n from 'i18next'
+import type { InitOptions } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
+import { normalizeLanguage, supportedLanguages } from './lib/language'
+import { zhCN } from './locales/zh-CN'
 
 const errorsEn = {
   usb_not_found: {
@@ -190,7 +193,8 @@ const errorsJa = {
   },
 }
 
-const resources = {
+export const resources = {
+  'zh-CN': { translation: zhCN },
   en: {
     translation: {
       title: 'pico4u VR Sleep Workaround',
@@ -216,6 +220,9 @@ const resources = {
       status_stopped: 'STOPPED',
       target_ip_label: 'Target IP:',
       logs_header: 'Activity Log',
+      logs_empty: 'No logs available.',
+      log_setup_step_failed: '{{step}}: failed',
+      close: 'Close',
       log_checking_devices: 'Checking for connected devices...',
       log_wireless_init: 'Starting wireless setup...',
       log_enable_tcpip: 'Enabling TCP/IP mode on port 5555...',
@@ -349,6 +356,9 @@ const resources = {
       status_stopped: '停止中',
       target_ip_label: '接続先IP:',
       logs_header: '動作ログ',
+      logs_empty: 'ログはありません。',
+      log_setup_step_failed: '{{step}}: 失敗',
+      close: '閉じる',
       log_checking_devices: '接続されたデバイスを確認中...',
       log_wireless_init: '無線セットアップを開始しています...',
       log_enable_tcpip: 'TCP/IPモードを有効化中 (ポート 5555)...',
@@ -460,15 +470,32 @@ const resources = {
   },
 }
 
-i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    resources,
-    fallbackLng: 'en',
-    interpolation: {
-      escapeValue: false,
-    },
-  })
+export const detection = {
+  order: ['localStorage', 'navigator'],
+  lookupLocalStorage: 'i18nextLng',
+  caches: ['localStorage'],
+  convertDetectedLanguage: normalizeLanguage,
+}
+
+function updateDocumentLanguage(language: string) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = normalizeLanguage(language)
+  }
+}
+
+i18n.on('languageChanged', updateDocumentLanguage)
+
+export const i18nOptions: InitOptions = {
+  resources,
+  fallbackLng: 'en',
+  supportedLngs: [...supportedLanguages],
+  load: 'currentOnly',
+  detection,
+  interpolation: {
+    escapeValue: false,
+  },
+}
+
+void i18n.use(LanguageDetector).use(initReactI18next).init(i18nOptions)
 
 export default i18n

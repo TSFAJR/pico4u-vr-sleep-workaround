@@ -1,6 +1,7 @@
 import { Button, TextField, DropdownSelector, DropdownMenuItem, Checkbox } from '@charcoal-ui/react'
 import { useState } from 'react'
 import { useAppContext } from '../context/AppContext'
+import { normalizeLanguage } from '../lib/language'
 
 export function Settings({ onClose }: { onClose?: () => void }) {
   const {
@@ -17,7 +18,7 @@ export function Settings({ onClose }: { onClose?: () => void }) {
     setTheme,
   } = useAppContext()
 
-  const [pendingLanguage, setPendingLanguage] = useState(i18n.language)
+  const [pendingLanguage, setPendingLanguage] = useState(normalizeLanguage(i18n.language))
   const [pendingTheme, setPendingTheme] = useState(theme)
   const [pendingDimAfterHours, setPendingDimAfterHours] = useState(dimAfterHours)
   const [pendingInterval, setPendingInterval] = useState(keepAwakeInterval)
@@ -53,10 +54,11 @@ export function Settings({ onClose }: { onClose?: () => void }) {
           <DropdownSelector
             label={t('language_label')}
             value={pendingLanguage}
-            onChange={(val) => setPendingLanguage(val)}
+            onChange={(val) => setPendingLanguage(normalizeLanguage(val))}
             className='w-full'
             showLabel
           >
+            <DropdownMenuItem value='zh-CN'>简体中文</DropdownMenuItem>
             <DropdownMenuItem value='ja'>日本語</DropdownMenuItem>
             <DropdownMenuItem value='en'>English</DropdownMenuItem>
           </DropdownSelector>

@@ -7,13 +7,15 @@ pico4u-vr-sleep-workaround is a workaround tool designed to prevent the Pico 4 U
 
 [日本語版（Japanese Version）はこちら](.github/README_ja.md)
 
+[简体中文说明](.github/README_zh-CN.md)
+
 ## 🌟 Features
 
 - **Keep-Alive Signal**: Prevents the headset from entering sleep mode by sending the `keyevent 224` (wake up) command at a configurable interval (default: 3 seconds).
 - **Connection Modes**: Supports both Wired (USB) and Wireless (TCP/IP) ADB connections.
 - **Device Validation**: Automatically detects the connected device and verifies it is a Pico 4 Ultra (checks for `A9210` in the model name).
 - **Auto-Dimming**: Optionally dims the headset's screen brightness to the lowest level (`1`) after a configurable delay (in hours) to prevent screen burn-in and save power.
-- **Multi-language Support**: User Interface is available in English and Japanese.
+- **Multi-language Support**: User Interface is available in English, Japanese, and Simplified Chinese. The initial language follows your system; change it in Settings and click Apply Changes to save your choice.
 
 ## 📸 Screenshot
 

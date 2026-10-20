@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface SheetProps {
   title: string
@@ -8,6 +9,7 @@ interface SheetProps {
 }
 
 export function Sheet({ title, isOpen, onClose, children }: SheetProps) {
+  const { t } = useTranslation()
   if (!isOpen) return null
 
   return (
@@ -19,6 +21,7 @@ export function Sheet({ title, isOpen, onClose, children }: SheetProps) {
           <button
             type='button'
             onClick={onClose}
+            aria-label={t('close')}
             className='p-1 rounded-md text-[var(--app-text-muted)] hover:text-[var(--app-text)] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer text-sm font-bold'
           >
             ✕
