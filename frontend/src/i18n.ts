@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { normalizeLanguage, supportedLanguages } from './lib/language'
 import { zhCN } from './locales/zh-CN'
+import { steamVrEn, steamVrJa } from './locales/steamvr'
 
 const errorsEn = {
   usb_not_found: {
@@ -197,6 +198,7 @@ export const resources = {
   'zh-CN': { translation: zhCN },
   en: {
     translation: {
+      ...steamVrEn,
       title: 'pico4u VR Sleep Workaround',
       subtitle:
         'Prevent your headset from entering sleep mode and losing tracking during extended use',
@@ -334,6 +336,7 @@ export const resources = {
   },
   ja: {
     translation: {
+      ...steamVrJa,
       title: 'pico4u V睡ツール',
       subtitle: 'V睡中にヘッドセットがスリープしてトラッキングがリセットされるのを防ぎます',
       instructions_header: '使い方',

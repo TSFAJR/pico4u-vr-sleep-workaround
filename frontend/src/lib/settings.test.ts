@@ -8,6 +8,9 @@ const initial: AppConfig = {
   keep_awake_interval_secs: 3,
   ip_address: '',
   last_connection_mode: 'wired',
+  steamvr_brightness_percent: 100,
+  auto_dim_steamvr: false,
+  auto_dim_steamvr_percent: 100,
 }
 it('merges consecutive saves and preserves explicit null in order', async () => {
   let release!: () => void

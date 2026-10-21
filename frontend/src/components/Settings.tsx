@@ -2,6 +2,7 @@ import { Button, TextField, DropdownSelector, DropdownMenuItem, Checkbox } from 
 import { useState } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { normalizeLanguage } from '../lib/language'
+import { BrightnessSlider } from './BrightnessSlider'
 
 export function Settings({ onClose }: { onClose?: () => void }) {
   const {
@@ -10,6 +11,9 @@ export function Settings({ onClose }: { onClose?: () => void }) {
     changeLanguage,
     dimAfterHours,
     updateDimDelay,
+    autoDimSteamVr,
+    updateAutoDimSteamVr,
+    autoDimSteamVrPercent,
     keepAwakeInterval,
     updateKeepAwakeInterval,
     isDebug,
@@ -21,6 +25,9 @@ export function Settings({ onClose }: { onClose?: () => void }) {
   const [pendingLanguage, setPendingLanguage] = useState(normalizeLanguage(i18n.language))
   const [pendingTheme, setPendingTheme] = useState(theme)
   const [pendingDimAfterHours, setPendingDimAfterHours] = useState(dimAfterHours)
+  const [pendingAutoDimSteamVr, setPendingAutoDimSteamVr] = useState(autoDimSteamVr)
+  const [pendingAutoDimSteamVrPercent, setPendingAutoDimSteamVrPercent] =
+    useState(autoDimSteamVrPercent)
   const [pendingInterval, setPendingInterval] = useState(keepAwakeInterval)
   const [pendingDebug, setPendingDebug] = useState(isDebug)
 
@@ -33,6 +40,12 @@ export function Settings({ onClose }: { onClose?: () => void }) {
     }
     if (pendingDimAfterHours !== dimAfterHours) {
       await updateDimDelay(pendingDimAfterHours)
+    }
+    if (
+      pendingAutoDimSteamVr !== autoDimSteamVr ||
+      pendingAutoDimSteamVrPercent !== autoDimSteamVrPercent
+    ) {
+      await updateAutoDimSteamVr(pendingAutoDimSteamVr, pendingAutoDimSteamVrPercent)
     }
     if (pendingInterval !== keepAwakeInterval) {
       await updateKeepAwakeInterval(pendingInterval)
@@ -88,6 +101,19 @@ export function Settings({ onClose }: { onClose?: () => void }) {
             className='w-full text-left'
             showLabel
           />
+          <div className='mt-3 flex flex-col gap-2'>
+            <Checkbox checked={pendingAutoDimSteamVr} onChange={setPendingAutoDimSteamVr}>
+              {t('steamvr_auto_dim')}
+            </Checkbox>
+            <BrightnessSlider
+              label={t('steamvr_auto_dim_percent')}
+              value={pendingAutoDimSteamVrPercent}
+              onChange={setPendingAutoDimSteamVrPercent}
+            />
+            <p className='text-xs leading-relaxed text-[var(--app-text-muted)]'>
+              {t('steamvr_auto_dim_note')}
+            </p>
+          </div>
         </div>
 
         <div>

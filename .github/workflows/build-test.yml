@@ -35,7 +35,7 @@ jobs:
         run: .\scripts\setup_adb.ps1
 
       - name: bundle tauri app
-        run: cargo fmt --check && cargo test --locked && cargo clippy --locked -- -D warnings
+        run: node scripts/steamvr.mjs && node scripts/test-steamvr-helper.mjs && cargo fmt --all --check && cargo test --workspace --locked && cargo clippy --workspace --locked -- -D warnings
 
       - name: build installers
         run: pnpm tauri build --no-sign
@@ -53,7 +53,7 @@ jobs:
           
           # 1. Verify DLLs are present (Searching recursively because NSIS often extracts to subdirs like $_OUTDIR)
           Write-Host "Verifying DLL presence..."
-          $required_dlls = @("AdbWinApi.dll", "AdbWinUsbApi.dll")
+          $required_dlls = @("AdbWinApi.dll", "AdbWinUsbApi.dll", "openvr_api.dll", "steamvr-brightness-helper.exe", "LICENSE-OpenVR.txt", "LICENSE-raphii-openvr-rs.txt")
           foreach ($dll in $required_dlls) {
               $found = Get-ChildItem "extracted_app" -Filter $dll -Recurse | Select-Object -First 1
               if ($found) {

@@ -9,10 +9,19 @@ import { OperateScreen } from './screens/OperateScreen'
 import { ErrorCard } from './ErrorCard'
 import { Settings } from './Settings'
 import { Logs } from './Logs'
+import { SteamVrBrightness } from './SteamVrBrightness'
 import type { ConnectionMode } from '../types'
 
 type Screen = 'mode' | 'prepare' | 'operate'
 type SheetType = 'settings' | 'logs' | null
+
+function HomeBrightness() {
+  return (
+    <div className='shrink-0 mx-5 mb-4 p-4 max-h-[45vh] overflow-y-auto rounded-2xl bg-[var(--app-card)] border border-[var(--app-border)]'>
+      <SteamVrBrightness />
+    </div>
+  )
+}
 
 export function MainView() {
   const {
@@ -50,8 +59,8 @@ export function MainView() {
       <div className='relative flex flex-col h-screen bg-[var(--app-bg)] text-[var(--app-text)]'>
         <AppHeader onOpenSettings={() => setActiveSheet('settings')} />
 
-        <div className='flex-1 flex flex-col items-center justify-center px-5'>
-          <div className='bg-[var(--app-card)] rounded-2xl p-6 shadow-sm border border-[var(--app-border)] w-full max-w-sm text-center'>
+        <div className='flex-1 min-h-0 overflow-y-auto flex flex-col items-center px-5 py-4'>
+          <div className='shrink-0 my-auto bg-[var(--app-card)] rounded-2xl p-6 shadow-sm border border-[var(--app-border)] w-full max-w-sm text-center'>
             {(autoConnectStatus === 'idle' || autoConnectStatus === 'connecting') && (
               <div className='flex flex-col items-center gap-4 py-4'>
                 <span className='w-8 h-8 border-3 border-gray-200 dark:border-gray-700 border-t-brand rounded-full animate-spin' />
@@ -116,6 +125,7 @@ export function MainView() {
             )}
           </div>
         </div>
+        <HomeBrightness />
 
         <Sheet
           title={t('settings_title')}
@@ -133,39 +143,42 @@ export function MainView() {
     <div className='relative flex flex-col h-screen bg-[var(--app-bg)] text-[var(--app-text)]'>
       <AppHeader onOpenSettings={() => setActiveSheet('settings')} />
 
-      {screen === 'mode' && (
-        <ModeSelectScreen
-          onNext={(mode) => {
-            resetSetup()
-            setTargetMode(mode)
-            setScreen('prepare')
-          }}
-          onBack={() => setScreen('operate')}
-        />
-      )}
+      <main className='flex-1 min-h-0 overflow-y-auto flex flex-col'>
+        {screen === 'mode' && (
+          <ModeSelectScreen
+            onNext={(mode) => {
+              resetSetup()
+              setTargetMode(mode)
+              setScreen('prepare')
+            }}
+            onBack={() => setScreen('operate')}
+          />
+        )}
 
-      {screen === 'prepare' && (
-        <PrepareScreen
-          mode={targetMode}
-          onBack={() => {
-            resetSetup()
-            setScreen('mode')
-          }}
-          onSuccess={() => setScreen('operate')}
-        />
-      )}
-
-      {screen === 'operate' && (
-        <OperateScreen
-          onChangeConnection={() => {
-            if (!isRunning) {
+        {screen === 'prepare' && (
+          <PrepareScreen
+            mode={targetMode}
+            onBack={() => {
               resetSetup()
               setScreen('mode')
-            }
-          }}
-          onOpenLogs={() => setActiveSheet('logs')}
-        />
-      )}
+            }}
+            onSuccess={() => setScreen('operate')}
+          />
+        )}
+
+        {screen === 'operate' && (
+          <OperateScreen
+            onChangeConnection={() => {
+              if (!isRunning) {
+                resetSetup()
+                setScreen('mode')
+              }
+            }}
+            onOpenLogs={() => setActiveSheet('logs')}
+          />
+        )}
+      </main>
+      <HomeBrightness />
 
       {/* Settings Sheet */}
       <Sheet

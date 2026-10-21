@@ -1741,7 +1741,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e9ec52138abedcc58dc17a7c6c0c00a2bdb4f3427c7f63fa97fd0d859155caf"
 dependencies = [
  "gtk-sys",
- "libloading",
+ "libloading 0.7.4",
  "once_cell",
 ]
 
@@ -1768,6 +1768,16 @@ checksum = "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f"
 dependencies = [
  "cfg-if",
  "winapi",
+]
+
+[[package]]
+name = "libloading"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
+dependencies = [
+ "cfg-if",
+ "windows-link 0.2.1",
 ]
 
 [[package]]
@@ -2297,6 +2307,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-shell",
  "tokio",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2477,6 +2488,14 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+
+[[package]]
+name = "raphii-openvr-rs"
+version = "0.1.0"
+source = "git+https://github.com/Raphiiko/raphii-openvr-rs?rev=e47f01430cda459653549d7dd35699463871a94a#e47f01430cda459653549d7dd35699463871a94a"
+dependencies = [
+ "libloading 0.8.9",
+]
 
 [[package]]
 name = "raw-window-handle"
@@ -3008,6 +3027,16 @@ name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+
+[[package]]
+name = "steamvr-brightness-helper"
+version = "0.3.0"
+dependencies = [
+ "libloading 0.8.9",
+ "raphii-openvr-rs",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "string_cache"

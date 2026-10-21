@@ -1,3 +1,5 @@
+import { steamVrZh } from './steamvr'
+
 const errors = {
   usb_not_found: {
     title: '未通过 USB 找到头显',
@@ -83,6 +85,7 @@ const errors = {
 }
 
 export const zhCN = {
+  ...steamVrZh,
   title: 'pico4u VR 防休眠工具',
   subtitle: '防止头显在长时间使用时进入休眠，避免追踪重置',
   instructions_header: '使用方法',

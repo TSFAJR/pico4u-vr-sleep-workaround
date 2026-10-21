@@ -12,7 +12,8 @@
       "msi"
     ],
     "externalBin": [
-      "bin/adb"
+      "bin/adb",
+      "bin/steamvr-brightness-helper"
     ],
     "resources": {
       "LICENSES/*": "LICENSES/",

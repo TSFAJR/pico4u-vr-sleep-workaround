@@ -10,6 +10,7 @@ mod connection;
 mod error;
 mod runtime;
 mod state;
+mod steamvr;
 
 use crate::commands::*;
 use crate::runtime::*;
@@ -20,7 +21,12 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(AppState::default())
+        .manage(steamvr::SteamVr::default())
         .setup(|app| {
+            app.state::<steamvr::SteamVr>().start(
+                app.handle().clone(),
+                config::load_config(app.handle()).steamvr_brightness_percent,
+            );
             if let Some(window) = app.get_webview_window("main") {
                 let suffix = if cfg!(debug_assertions) { "-dev" } else { "" };
                 let title = format!("pico4u V睡ツール v{}{}", env!("CARGO_PKG_VERSION"), suffix);
@@ -37,11 +43,30 @@ fn main() {
             get_running,
             set_debug_mode,
             get_config,
-            save_config_cmd
+            save_config_cmd,
+            steamvr::get_steamvr_status,
+            steamvr::set_steamvr_enabled,
+            steamvr::set_steamvr_percent,
+            steamvr::restore_steamvr,
+            steamvr::retry_steamvr
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested {
+                api, code: None, ..
+            } = &event
+            {
+                let service = app.state::<steamvr::SteamVr>().inner().clone();
+                if service.begin_shutdown() {
+                    api.prevent_exit();
+                    let handle = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        service.shutdown().await;
+                        handle.exit(0);
+                    });
+                }
+            }
             if let tauri::RunEvent::Exit = event {
                 let state = app.state::<AppState>();
                 for slot in [&state.keep_awake_task, &state.dim_task] {

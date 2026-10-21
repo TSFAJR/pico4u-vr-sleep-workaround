@@ -1,0 +1,11 @@
+[package]
+name = "steamvr-brightness-helper"
+version = "0.3.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libloading = "0.8.9"
+raphii-openvr-rs = { git = "https://github.com/Raphiiko/raphii-openvr-rs", rev = "e47f01430cda459653549d7dd35699463871a94a" }

@@ -5,6 +5,7 @@ import { useSettings } from './useSettings'
 import { useConnection } from './useConnection'
 import { useRuntime } from './useRuntime'
 import { useTheme } from './useTheme'
+import { useSteamVr } from './useSteamVr'
 import { formatErrorLog, toAppError, type AppError } from '../lib/errors'
 import { normalizeLanguage } from '../lib/language'
 import {
@@ -19,6 +20,7 @@ export type { ConnectionStatus } from '../types'
 export function useAppLogic() {
   const { t, i18n } = useTranslation()
   const settings = useSettings()
+  const steamvr = useSteamVr(settings)
   const runtime = useRuntime()
   const connection = useConnection(
     runtime.ready ? settings.config : null,
@@ -130,6 +132,7 @@ export function useAppLogic() {
     theme,
     setTheme,
     settings,
+    steamvr,
     runtime,
     connection,
     setupSteps,
@@ -145,6 +148,8 @@ export function useAppLogic() {
     connectionStatus: status,
     connectionError,
     dimAfterHours: config?.dim_delay_hours ?? 1,
+    autoDimSteamVr: config?.auto_dim_steamvr ?? false,
+    autoDimSteamVrPercent: config?.auto_dim_steamvr_percent ?? 100,
     keepAwakeInterval: config?.keep_awake_interval_secs ?? 3,
     changeLanguage: (language: string) => {
       void i18n.changeLanguage(normalizeLanguage(language))
@@ -157,6 +162,8 @@ export function useAppLogic() {
     connectManual,
     toggleKeepAwake,
     updateDimDelay: (hours: number) => settings.update({ dim_delay_hours: hours }),
+    updateAutoDimSteamVr: (enabled: boolean, percent: number) =>
+      settings.update({ auto_dim_steamvr: enabled, auto_dim_steamvr_percent: percent }),
     updateKeepAwakeInterval: (seconds: number) =>
       settings.update({ keep_awake_interval_secs: seconds }),
     autoConnectStatus: connection.autoStatus,

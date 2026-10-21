@@ -16,6 +16,8 @@ The root and `frontend/` intentionally have separate manifests and lockfiles. Ro
 
 ## Checks and builds
 
+SteamVR software brightness uses an isolated Rust workspace helper. Run `node scripts/steamvr.mjs` before standalone Rust checks; normal `pnpm dev` and `pnpm build` hooks prepare the appropriate sidecar automatically. Use `cargo test --workspace --locked`, `cargo clippy --workspace --locked -- -D warnings`, and `cargo fmt --all --check` to cover both packages. See [README_STEAMVR.md](README_STEAMVR.md) for the pinned OpenVR DLL, packaging, and hardware acceptance checks.
+
 ```powershell
 .\scripts\pnpm.ps1 -C frontend lint
 .\scripts\pnpm.ps1 -C frontend format:check

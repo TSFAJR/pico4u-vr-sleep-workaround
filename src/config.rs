@@ -11,11 +11,16 @@ pub struct AppConfig {
     pub ip_address: String,
     pub keep_awake_interval_secs: u64,
     pub last_connection_mode: Option<ConnectionMode>,
+    pub steamvr_brightness_percent: u8,
+    pub auto_dim_steamvr: bool,
+    pub auto_dim_steamvr_percent: u8,
 }
 
 impl AppConfig {
     pub fn validate(&self) -> Result<(), String> {
-        if !(1..=3600).contains(&self.keep_awake_interval_secs)
+        if self.steamvr_brightness_percent > 100
+            || self.auto_dim_steamvr_percent > 100
+            || !(1..=3600).contains(&self.keep_awake_interval_secs)
             || !self.dim_delay_hours.is_finite()
             || !(0.0..=168.0).contains(&self.dim_delay_hours)
         {
@@ -35,6 +40,9 @@ impl Default for AppConfig {
             ip_address: String::new(),
             keep_awake_interval_secs: 3,
             last_connection_mode: None,
+            steamvr_brightness_percent: 100,
+            auto_dim_steamvr: false,
+            auto_dim_steamvr_percent: 100,
         }
     }
 }
@@ -79,11 +87,19 @@ mod tests {
             serde_json::from_str(r#"{"ip_address":"192.168.1.2","last_connection_mode":"wired"}"#)
                 .unwrap();
         assert_eq!(config.keep_awake_interval_secs, 3);
+        assert_eq!(config.steamvr_brightness_percent, 100);
+        assert!(!config.auto_dim_steamvr);
+        assert_eq!(config.auto_dim_steamvr_percent, 100);
         assert_eq!(config.last_connection_mode, Some(ConnectionMode::Wired));
         assert!(config.validate().is_ok());
     }
     #[test]
     fn rejects_invalid_timer_values() {
+        let config = AppConfig {
+            steamvr_brightness_percent: 101,
+            ..AppConfig::default()
+        };
+        assert!(config.validate().is_err());
         let config = AppConfig {
             keep_awake_interval_secs: 0,
             ..AppConfig::default()

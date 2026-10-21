@@ -7,6 +7,9 @@ export interface AppConfig {
   ip_address: string
   keep_awake_interval_secs: number
   last_connection_mode: ConnectionMode | null
+  steamvr_brightness_percent: number
+  auto_dim_steamvr: boolean
+  auto_dim_steamvr_percent: number
 }
 
 export interface ConnectionStatus {

@@ -11,6 +11,8 @@ pico4u-vr-sleep-workaround is a workaround tool designed to prevent the Pico 4 U
 
 ## 🌟 Features
 
+- **SteamVR software brightness**: Optional independent 0–100% software dimming for SteamVR, with a Windows restore button. See [SteamVR setup and recovery](README_STEAMVR.md).
+
 - **Keep-Alive Signal**: Prevents the headset from entering sleep mode by sending the `keyevent 224` (wake up) command at a configurable interval (default: 3 seconds).
 - **Connection Modes**: Supports both Wired (USB) and Wireless (TCP/IP) ADB connections.
 - **Device Validation**: Automatically detects the connected device and verifies it is a Pico 4 Ultra (checks for `A9210` in the model name).

@@ -4,7 +4,7 @@ use crate::connection::{self, ConnectionMode};
 use crate::error::{AppError, ErrorCode};
 use crate::state::AppState;
 use std::sync::atomic::Ordering;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::time::{Duration, MissedTickBehavior, interval, sleep, timeout};
 
 #[tauri::command]
@@ -75,6 +75,10 @@ pub async fn start_keep_awake(
     if config.dim_delay_hours > 0.0 {
         let dim_task = tokio::spawn(async move {
             sleep(Duration::from_secs_f64(config.dim_delay_hours * 3600.0)).await;
+            // Read the latest saved opt-in and slider value at the deadline.
+            // OpenVR runs independently even if the following ADB operation fails.
+            app.state::<crate::steamvr::SteamVr>()
+                .auto_dim(&load_config(&app));
             let result = async {
                 if !connection::verify_pico(&app, &serial).await? {
                     return Err(AppError::new(ErrorCode::DeviceLost));
