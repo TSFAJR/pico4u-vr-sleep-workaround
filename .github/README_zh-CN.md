@@ -6,13 +6,34 @@
 
 ## 功能
 
-- **SteamVR 软件亮度**：独立的 0–100% 调光和 Windows 恢复按钮，详见 [SteamVR 说明](../README_STEAMVR.md)。
+- **SteamVR 软件亮度**：主页支持 0–100% 即时调光、±1% 精细微调和 Windows 恢复按钮；可选自动调暗使用独立亮度预设，详见 [SteamVR 说明](../README_STEAMVR.md)。
 
 - **防休眠**：默认每 3 秒发送一次 `keyevent 224` 唤醒指令，可在设置中调整间隔。
 - **有线与无线连接**：支持 USB 和 TCP/IP 无线 ADB 连接。
 - **设备检测**：自动确认连接的设备为 PICO 4 Ultra（型号包含 `A9210`）。
 - **自动调暗屏幕**：可在指定小时数后将屏幕亮度调至最低（`1`），减少耗电和烧屏风险。设为 `0` 可禁用，启动防休眠时生效。
 - **多语言**：支持简体中文、英文和日文，并记住手动选择的语言。
+
+## 界面与功能展示
+
+以下为当前版本在 400×700 窗口下的界面，采用 2 倍分辨率截图。连接信息、运行状态和日志使用演示数据，用于展示功能，不代表真机测试结果。
+
+| 防休眠运行与即时亮度 | 深色主题 |
+| --- | --- |
+| ![运行主页：SteamVR 亮度35%、1%加减微调及恢复100%](../assets/screenshots/zh-CN-home.png) | ![深色主题下的运行主页和亮度控制](../assets/screenshots/zh-CN-home-dark.png) |
+| **独立自动调暗预设** | **有线／无线连接向导** |
+| ![设置页：独立5%预设、唤醒间隔、应用与取消](../assets/screenshots/zh-CN-preset.png) | ![连接向导：USB有线与Wi-Fi无线选择](../assets/screenshots/zh-CN-connection.png) |
+| **连接异常与排查建议** | **事件日志** |
+| ![USB连接异常及中文排查建议](../assets/screenshots/zh-CN-error.png) | ![事件日志中的ADB与OpenVR示例信息](../assets/screenshots/zh-CN-logs.png) |
+
+主页即时亮度（图中 35%）与自动调暗预设（图中 5%）分别保存。预设需点击“应用更改”，到达自动调暗时间才会生效；主页“恢复 100%”不会修改预设。
+
+<details>
+<summary>查看语言、主题与常规设置</summary>
+
+![设置页：语言、主题、自动调暗延迟与同步选项](../assets/screenshots/zh-CN-settings.png)
+
+</details>
 
 ## 使用前准备：开启 USB 调试
 

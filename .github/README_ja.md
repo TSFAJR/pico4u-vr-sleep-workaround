@@ -11,7 +11,7 @@ pico4u-vr-sleep-workaroundは、開発時や特定の用途において、Pico 4
 
 ## 🌟 主な機能
 
-- **SteamVR ソフトウェア輝度**: 独立した 0–100% の調光と Windows 側の復元ボタン。[詳細](../README_STEAMVR.md)。
+- **SteamVR ソフトウェア輝度**: ホーム画面で 0–100% の即時調光、±1% の微調整、Windows 側からの復元が可能です。自動減光には独立した輝度プリセットを使用できます。[詳細](../README_STEAMVR.md)。
 
 - **キープアライブ信号の送信**: 設定した間隔（デフォルトは3秒）で`keyevent 224`（ウェイクアップ操作）を送信し、ヘッドセットがスリープモードに入るのを防ぎます。
 - **接続モード**: 有線（USB）および無線（TCP/IP）でのADB接続の両方をサポートしています。
@@ -21,7 +21,24 @@ pico4u-vr-sleep-workaroundは、開発時や特定の用途において、Pico 4
 
 ## 📸 スクリーンショット
 
-![UI](../assets/screenshot_ja.png)
+現在の UI を 400×700 のウィンドウ、2 倍解像度で撮影しています。接続情報、実行状態、ログは機能紹介用のデモデータであり、実機テストの結果ではありません。
+
+| スリープ防止と即時輝度制御 | ダークテーマ |
+| --- | --- |
+| ![実行画面：SteamVR輝度35%、1%の微調整と100%への復元](../assets/screenshots/ja-home.png) | ![ダークテーマの実行画面](../assets/screenshots/ja-home-dark.png) |
+| **独立した自動減光プリセット** | **USB／無線接続ウィザード** |
+| ![独立した5%プリセット、送信間隔、変更の適用とキャンセル](../assets/screenshots/ja-preset.png) | ![USBとWi-Fiを選択する接続ウィザード](../assets/screenshots/ja-connection.png) |
+| **接続エラーと解決方法** | **イベントログ** |
+| ![USB接続エラーとトラブルシューティング](../assets/screenshots/ja-error.png) | ![ADBとOpenVRのサンプルログ](../assets/screenshots/ja-logs.png) |
+
+ホーム画面の即時輝度（図では35%）と自動減光プリセット（図では5%）は別々に保存されます。プリセットは「変更を適用」で保存し、自動減光の時刻に適用されます。100% に戻す操作ではプリセットは変更されません。
+
+<details>
+<summary>言語、テーマ、一般設定を表示</summary>
+
+![言語、テーマ、自動減光の遅延と同期設定](../assets/screenshots/ja-settings.png)
+
+</details>
 
 ## 🔧 事前準備：USBデバッグの有効化
 

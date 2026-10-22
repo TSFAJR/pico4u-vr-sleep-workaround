@@ -11,7 +11,7 @@ pico4u-vr-sleep-workaround is a workaround tool designed to prevent the Pico 4 U
 
 ## 🌟 Features
 
-- **SteamVR software brightness**: Optional independent 0–100% software dimming for SteamVR, with a Windows restore button. See [SteamVR setup and recovery](README_STEAMVR.md).
+- **SteamVR software brightness**: Independent 0–100% dimming on the homepage, ±1% fine adjustment and a Windows restore button. Optional auto-dimming uses a separate brightness preset. See [SteamVR setup and recovery](README_STEAMVR.md).
 
 - **Keep-Alive Signal**: Prevents the headset from entering sleep mode by sending the `keyevent 224` (wake up) command at a configurable interval (default: 3 seconds).
 - **Connection Modes**: Supports both Wired (USB) and Wireless (TCP/IP) ADB connections.
@@ -19,9 +19,26 @@ pico4u-vr-sleep-workaround is a workaround tool designed to prevent the Pico 4 U
 - **Auto-Dimming**: Optionally dims the headset's screen brightness to the lowest level (`1`) after a configurable delay (in hours) to prevent screen burn-in and save power.
 - **Multi-language Support**: User Interface is available in English, Japanese, and Simplified Chinese. The initial language follows your system; change it in Settings and click Apply Changes to save your choice.
 
-## 📸 Screenshot
+## 📸 Screenshots
 
-![UI](./assets/screenshot.png)
+Current UI at 400×700, captured at 2× resolution. Connection details, running state and logs use demonstration data; these screenshots illustrate the interface rather than a hardware test.
+
+| Keep-awake and live SteamVR brightness | Dark theme |
+| --- | --- |
+| ![Running screen with 35% SteamVR brightness, 1% adjustment buttons and Restore 100%](assets/screenshots/en-home.png) | ![Running screen in the dark theme](assets/screenshots/en-home-dark.png) |
+| **Independent auto-dim preset** | **USB / wireless connection wizard** |
+| ![Settings with an independent 5% auto-dim preset, wake interval and Apply / Cancel](assets/screenshots/en-preset.png) | ![Connection wizard offering USB and Wi-Fi](assets/screenshots/en-connection.png) |
+| **Connection error and troubleshooting** | **Event log** |
+| ![USB connection error with troubleshooting suggestions](assets/screenshots/en-error.png) | ![Event log with example ADB and OpenVR messages](assets/screenshots/en-logs.png) |
+
+The homepage value (35% here) applies immediately; the settings preset (5% here) is saved separately with Apply Changes and only takes effect at the auto-dim deadline. Restore 100% leaves the preset unchanged.
+
+<details>
+<summary>Language, theme and general settings</summary>
+
+![Settings with language, theme, auto-dim delay and synchronization options](assets/screenshots/en-settings.png)
+
+</details>
 
 ## 🔧 Prerequisites: Enable USB Debugging
 
