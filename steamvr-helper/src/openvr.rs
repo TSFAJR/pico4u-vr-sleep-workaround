@@ -76,6 +76,79 @@ impl Session {
         Ok(!unsafe { connected(0) })
     }
 
+    pub fn sample(&self) -> Option<crate::detector::Sample> {
+        let read = self.system.GetDeviceToAbsoluteTrackingPose?;
+        let mut poses =
+            [raw::TrackedDevicePose_t::default(); raw::k_unMaxTrackedDeviceCount as usize];
+        unsafe {
+            read(
+                raw::ETrackingUniverseOrigin::TrackingUniverseStanding,
+                0.0,
+                poses.as_mut_ptr(),
+                poses.len() as u32,
+            )
+        };
+        let pose = poses[0];
+        let level = self
+            .system
+            .GetTrackedDeviceActivityLevel
+            .map(|f| unsafe { f(0) });
+        // Activity can mean motion, not wearing. Trust proximity only when the
+        // driver advertises the sensor and returns an HMD input state.
+        let standby =
+            level.is_some_and(|l| l == raw::EDeviceActivityLevel::k_EDeviceActivityLevel_Standby);
+        let mut wearing = None;
+        if let (Some(property), Some(state)) = (
+            self.system.GetBoolTrackedDeviceProperty,
+            self.system.GetControllerState,
+        ) {
+            let mut error = raw::ETrackedPropertyError::TrackedProp_Success;
+            let has_sensor = unsafe {
+                property(
+                    0,
+                    raw::ETrackedDeviceProperty::Prop_ContainsProximitySensor_Bool,
+                    &mut error,
+                )
+            };
+            if has_sensor && error == raw::ETrackedPropertyError::TrackedProp_Success {
+                let mut input = raw::VRControllerState_t::default();
+                if unsafe { state(0, &mut input, std::mem::size_of_val(&input) as u32) } {
+                    wearing = Some(input.ulButtonPressed & (1u64 << 31) != 0);
+                }
+            }
+        }
+        let presence_available = wearing.is_some();
+        let mut activity = false;
+        let mut controllers_available = false;
+        if let (Some(class), Some(state)) = (
+            self.system.GetTrackedDeviceClass,
+            self.system.GetControllerState,
+        ) {
+            for i in 1..raw::k_unMaxTrackedDeviceCount {
+                if unsafe { class(i) } != raw::ETrackedDeviceClass::TrackedDeviceClass_Controller {
+                    continue;
+                }
+                let mut s = raw::VRControllerState_t::default();
+                if unsafe { state(i, &mut s, std::mem::size_of_val(&s) as u32) } {
+                    controllers_available = true;
+                    activity |= s.ulButtonPressed != 0
+                        || s.rAxis.iter().any(|a| a.x.abs() > 0.25 || a.y.abs() > 0.25);
+                }
+            }
+        }
+        Some(crate::detector::Sample {
+            position: std::array::from_fn(|i| f64::from(pose.mDeviceToAbsoluteTracking.m[i][3])),
+            quaternion: crate::detector::quaternion(pose.mDeviceToAbsoluteTracking.m),
+            valid: pose.bPoseIsValid
+                && pose.bDeviceIsConnected
+                && pose.eTrackingResult == raw::ETrackingResult::TrackingResult_Running_OK
+                && !standby
+                && wearing != Some(false),
+            activity,
+            controllers_available,
+            presence_available,
+        })
+    }
     pub fn prepare(&mut self) -> Result<(), Failure> {
         if self.handle.is_some() {
             return Ok(());

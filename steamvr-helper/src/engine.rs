@@ -1,7 +1,11 @@
+use crate::detector::{Detector, Sample};
 use crate::protocol::{Desired, Failure, Report};
 use std::time::Duration;
 
 pub trait Backend {
+    fn sample(&self) -> Option<Sample> {
+        None
+    }
     fn quit_requested(&self) -> Result<bool, Failure>;
     fn prepare(&mut self) -> Result<(), Failure>;
     fn resize(&self) -> Result<(), Failure>;
@@ -11,6 +15,10 @@ pub trait Backend {
 
 pub struct Engine<B> {
     session: Option<B>,
+    detector: Detector,
+    detection: crate::protocol::DetectionReport,
+    next_report: Duration,
+    fade: Option<(u8, u32, Duration, u8)>,
     blocked: bool,
     retry: u64,
     enabled: bool,
@@ -24,6 +32,10 @@ impl<B: Backend> Default for Engine<B> {
     fn default() -> Self {
         Self {
             session: None,
+            detector: Detector::default(),
+            detection: Default::default(),
+            next_report: Duration::ZERO,
+            fade: None,
             blocked: false,
             retry: 0,
             enabled: false,
@@ -47,7 +59,10 @@ impl<B: Backend> Engine<B> {
             revision: desired.revision,
             ..Report::default()
         };
-        if !desired.enabled || desired.quit {
+        let monitoring = desired.detector.enabled || desired.detector.calibrating;
+        if (!desired.enabled && !monitoring) || desired.quit {
+            self.detector.reset();
+            self.fade = None;
             // Drop performs Hide -> Destroy -> Shutdown before acknowledging.
             self.session = None;
             self.blocked = false;
@@ -68,6 +83,8 @@ impl<B: Backend> Engine<B> {
                 Ok(false) => {}
                 result => {
                     self.session = None;
+                    self.detector.reset();
+                    self.fade = None;
                     self.blocked = false;
                     self.last_applied = None;
                     self.next_connect = now + Duration::from_secs(2);
@@ -95,15 +112,60 @@ impl<B: Backend> Engine<B> {
                 }
             }
         }
-        if let Some(session) = self.session.as_mut().filter(|_| !self.blocked) {
+        let detection = self.detector.sample(
+            &desired.detector,
+            now,
+            self.session.as_ref().and_then(|s| s.sample()),
+        );
+        if now >= self.next_report
+            || detection.generation != self.detection.generation
+            || detection.valid != self.detection.valid
+        {
+            self.detection = detection;
+            self.next_report = now + Duration::from_secs(1);
+        }
+        report.detection = self.detection.clone();
+        if !desired.enabled {
+            if let Some(s) = self.session.as_mut() {
+                s.clear_overlay();
+            }
+            self.last_applied = Some(100);
+            self.fade = None;
+        }
+        if let Some(session) = self
+            .session
+            .as_mut()
+            .filter(|_| !self.blocked && desired.enabled)
+        {
             // Initializing OpenVR can be slow. Never show a stale request once
             // the input thread has received disable/restore or a newer value.
             if !current() {
                 report.applied_percent = self.last_applied;
                 return report;
             }
+            if self
+                .fade
+                .is_none_or(|f| f.0 != desired.percent || f.1 != desired.fade_ms)
+            {
+                self.fade = Some((
+                    desired.percent,
+                    desired.fade_ms,
+                    now,
+                    self.last_applied.unwrap_or(100),
+                ));
+            }
+            let (_, _, start, from) = self.fade.unwrap();
+            let progress = if desired.fade_ms == 0 {
+                1.0
+            } else {
+                (now.saturating_sub(start).as_secs_f64() * 1000.0 / f64::from(desired.fade_ms))
+                    .min(1.0)
+            };
+            let percent = (f64::from(from)
+                + (f64::from(desired.percent) - f64::from(from)) * progress)
+                .round() as u8;
             let result = (|| {
-                if desired.percent < 100 {
+                if percent < 100 {
                     session.prepare()?;
                 }
                 if now >= self.last_geometry + Duration::from_secs(1) {
@@ -113,8 +175,8 @@ impl<B: Backend> Engine<B> {
                 if !current() {
                     return Ok(());
                 }
-                session.apply(desired.percent)?;
-                self.last_applied = Some(desired.percent);
+                session.apply(percent)?;
+                self.last_applied = Some(percent);
                 Ok::<(), Failure>(())
             })();
             if let Err(error) = result {
@@ -129,6 +191,8 @@ impl<B: Backend> Engine<B> {
         }
         report.phase = if self.blocked {
             "error"
+        } else if self.session.is_some() && !desired.enabled {
+            "disabled"
         } else if self.session.is_some() {
             "active"
         } else {
@@ -323,5 +387,91 @@ mod tests {
         );
         assert_ne!(r.applied_percent, Some(0));
         assert!(r.error.is_none());
+    }
+    #[test]
+    fn monitoring_keeps_one_session_without_creating_overlay_and_restore_cancels_fade() {
+        use std::cell::RefCell;
+        struct Monitor {
+            applied: Rc<RefCell<Vec<u8>>>,
+            created: Rc<Cell<u32>>,
+            prepared: bool,
+        }
+        impl Backend for Monitor {
+            fn quit_requested(&self) -> Result<bool, Failure> {
+                Ok(false)
+            }
+            fn sample(&self) -> Option<Sample> {
+                Some(Sample {
+                    position: [0.; 3],
+                    quaternion: [1., 0., 0., 0.],
+                    valid: true,
+                    activity: false,
+                    controllers_available: true,
+                    presence_available: true,
+                })
+            }
+            fn prepare(&mut self) -> Result<(), Failure> {
+                if !self.prepared {
+                    self.created.set(self.created.get() + 1);
+                    self.prepared = true;
+                }
+                Ok(())
+            }
+            fn resize(&self) -> Result<(), Failure> {
+                Ok(())
+            }
+            fn apply(&self, p: u8) -> Result<(), Failure> {
+                self.applied.borrow_mut().push(p);
+                Ok(())
+            }
+            fn clear_overlay(&mut self) {
+                self.prepared = false;
+            }
+        }
+        let applied = Rc::new(RefCell::new(Vec::new()));
+        let created = Rc::new(Cell::new(0));
+        let mut e = Engine::default();
+        let mut d = Desired::default();
+        d.detector.enabled = true;
+        d.detector.generation = 1;
+        let r = e.step(
+            &d,
+            Duration::ZERO,
+            || {
+                Ok(Monitor {
+                    applied: applied.clone(),
+                    created: created.clone(),
+                    prepared: false,
+                })
+            },
+            || true,
+        );
+        assert!(r.detection.valid);
+        assert_eq!(created.get(), 0);
+        assert!(applied.borrow().is_empty());
+        d.enabled = true;
+        d.percent = 0;
+        d.fade_ms = 3000;
+        d.revision = 1;
+        e.step(
+            &d,
+            Duration::from_secs(1),
+            || panic!("second session"),
+            || true,
+        );
+        e.step(&d, Duration::from_secs(2), || panic!(), || true);
+        assert!(applied.borrow().last().unwrap() > &0);
+        assert_eq!(created.get(), 1);
+        d.enabled = false;
+        d.percent = 100;
+        d.fade_ms = 0;
+        d.revision = 2;
+        let r = e.step(&d, Duration::from_millis(2050), || panic!(), || true);
+        assert_eq!(r.applied_percent, Some(100));
+        assert!(r.detection.valid);
+        let count = applied.borrow().len();
+        e.step(&d, Duration::from_secs(5), || panic!(), || true);
+        assert_eq!(count, applied.borrow().len());
+        assert_eq!(created.get(), 1);
     }
 }

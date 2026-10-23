@@ -28,17 +28,21 @@
     ]
   },
   "productName": "pico4u-vr-sleep-workaround",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "identifier": "com.tauri.pico4uvrsleepworkaround",
   "plugins": {},
   "app": {
     "windows": [
       {
         "fullscreen": false,
-        "resizable": false,
+        "resizable": true,
         "title": "pico4u-vr-sleep-workaround",
-        "width": 400,
-        "height": 700
+        "width": 1120,
+        "height": 840,
+        "minWidth": 640,
+        "minHeight": 560,
+        "decorations": false,
+        "shadow": true
       }
     ],
     "security": {

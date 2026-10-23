@@ -2,6 +2,7 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
+mod detector;
 mod engine;
 mod openvr;
 mod protocol;
@@ -17,6 +18,9 @@ use std::{
 };
 
 impl Backend for Session {
+    fn sample(&self) -> Option<detector::Sample> {
+        Session::sample(self)
+    }
     fn quit_requested(&self) -> Result<bool, Failure> {
         Session::quit_requested(self)
     }

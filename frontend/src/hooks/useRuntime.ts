@@ -34,7 +34,16 @@ export function useRuntime() {
     const unlisten = listen<string>('debug-log', (event) => {
       if (!controller.signal.aborted) addLog(event.payload)
     }).catch(() => () => {})
+    const poll = setInterval(() => {
+      void api
+        .running(controller.signal)
+        .then((value) => {
+          if (!controller.signal.aborted) setRunning(value)
+        })
+        .catch(() => {})
+    }, 2000)
     return () => {
+      clearInterval(poll)
       controller.abort()
       void unlisten.then((stop) => stop())
       lock.current = false

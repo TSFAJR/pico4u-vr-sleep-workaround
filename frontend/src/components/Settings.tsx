@@ -2,18 +2,15 @@ import { Button, TextField, DropdownSelector, DropdownMenuItem, Checkbox } from 
 import { useState } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { normalizeLanguage } from '../lib/language'
-import { BrightnessSlider } from './BrightnessSlider'
+import { SleepSettings } from './SleepSettings'
+import { defaultSleepConfig } from '../types'
 
 export function Settings({ onClose }: { onClose?: () => void }) {
   const {
     t,
     i18n,
     changeLanguage,
-    dimAfterHours,
-    updateDimDelay,
-    autoDimSteamVr,
-    updateAutoDimSteamVr,
-    autoDimSteamVrPercent,
+    settings,
     keepAwakeInterval,
     updateKeepAwakeInterval,
     isDebug,
@@ -24,36 +21,35 @@ export function Settings({ onClose }: { onClose?: () => void }) {
 
   const [pendingLanguage, setPendingLanguage] = useState(normalizeLanguage(i18n.language))
   const [pendingTheme, setPendingTheme] = useState(theme)
-  const [pendingDimAfterHours, setPendingDimAfterHours] = useState(dimAfterHours)
-  const [pendingAutoDimSteamVr, setPendingAutoDimSteamVr] = useState(autoDimSteamVr)
-  const [pendingAutoDimSteamVrPercent, setPendingAutoDimSteamVrPercent] =
-    useState(autoDimSteamVrPercent)
+  const [pendingSleep, setPendingSleep] = useState(settings.config?.sleep ?? defaultSleepConfig)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const [pendingInterval, setPendingInterval] = useState(keepAwakeInterval)
   const [pendingDebug, setPendingDebug] = useState(isDebug)
 
   const handleApply = async () => {
-    if (pendingLanguage !== i18n.language) {
-      changeLanguage(pendingLanguage)
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await settings.update({ sleep: pendingSleep })
+      if (pendingLanguage !== i18n.language) {
+        changeLanguage(pendingLanguage)
+      }
+      if (pendingTheme !== theme) {
+        setTheme(pendingTheme as any)
+      }
+      if (pendingInterval !== keepAwakeInterval) {
+        await updateKeepAwakeInterval(pendingInterval)
+      }
+      if (pendingDebug !== isDebug) {
+        await toggleDebugMode(pendingDebug)
+      }
+      onClose?.()
+    } catch (e) {
+      setSaveError(String(e))
+    } finally {
+      setSaving(false)
     }
-    if (pendingTheme !== theme) {
-      setTheme(pendingTheme as any)
-    }
-    if (pendingDimAfterHours !== dimAfterHours) {
-      await updateDimDelay(pendingDimAfterHours)
-    }
-    if (
-      pendingAutoDimSteamVr !== autoDimSteamVr ||
-      pendingAutoDimSteamVrPercent !== autoDimSteamVrPercent
-    ) {
-      await updateAutoDimSteamVr(pendingAutoDimSteamVr, pendingAutoDimSteamVrPercent)
-    }
-    if (pendingInterval !== keepAwakeInterval) {
-      await updateKeepAwakeInterval(pendingInterval)
-    }
-    if (pendingDebug !== isDebug) {
-      await toggleDebugMode(pendingDebug)
-    }
-    onClose?.()
   }
 
   const handleCancel = () => {
@@ -61,8 +57,9 @@ export function Settings({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <div className='flex flex-col w-full'>
-      <div className='flex flex-col gap-6 pb-6'>
+    <div className='settings-layout'>
+      <div className='settings-fields'>
+        <h3 className='settings-group-title'>{t('ui_general')}</h3>
         <div>
           <DropdownSelector
             label={t('language_label')}
@@ -93,31 +90,6 @@ export function Settings({ onClose }: { onClose?: () => void }) {
 
         <div>
           <TextField
-            label={t('dim_setting_label')}
-            type='number'
-            value={String(pendingDimAfterHours)}
-            onChange={(val) => setPendingDimAfterHours(Number(val))}
-            assistiveText={t('dim_setting_note')}
-            className='w-full text-left'
-            showLabel
-          />
-          <div className='mt-3 flex flex-col gap-2'>
-            <Checkbox checked={pendingAutoDimSteamVr} onChange={setPendingAutoDimSteamVr}>
-              {t('steamvr_auto_dim')}
-            </Checkbox>
-            <BrightnessSlider
-              label={t('steamvr_auto_dim_percent')}
-              value={pendingAutoDimSteamVrPercent}
-              onChange={setPendingAutoDimSteamVrPercent}
-            />
-            <p className='text-xs leading-relaxed text-[var(--app-text-muted)]'>
-              {t('steamvr_auto_dim_note')}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <TextField
             label={t('keep_awake_interval_label')}
             type='number'
             value={String(pendingInterval)}
@@ -133,10 +105,16 @@ export function Settings({ onClose }: { onClose?: () => void }) {
             {t('debug_mode')}
           </Checkbox>
         </div>
+        <SleepSettings value={pendingSleep} onChange={setPendingSleep} />
       </div>
 
-      <div className='shrink-0 pt-4 flex flex-col gap-3 border-t border-[var(--app-border)] bg-[var(--app-card)]'>
-        <Button onClick={handleApply} variant='Primary' fullWidth>
+      <div className='settings-footer'>
+        {saveError && (
+          <p role='alert' className='text-xs text-red-600 break-words'>
+            {t('sleep_invalid_settings')}: {saveError}
+          </p>
+        )}
+        <Button onClick={handleApply} disabled={saving} variant='Primary' fullWidth>
           {t('btn_apply_changes')}
         </Button>
         <Button onClick={handleCancel} variant='Default' fullWidth>

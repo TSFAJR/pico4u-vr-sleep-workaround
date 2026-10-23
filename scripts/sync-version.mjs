@@ -33,6 +33,12 @@ try {
   cargo = cargo.replace(/^(version\s*=\s*")([^"]*)(")/m, `$1${newVersion}$3`);
   writeFileSync(paths.cargo, cargo);
   console.log(`✓ Cargo.toml updated`);
+  const helperPath = resolve(root, 'steamvr-helper/Cargo.toml');
+  const helper = readFileSync(helperPath, 'utf8').replace(/^(version\s*=\s*")([^"]*)(")/m, `$1${newVersion}$3`);
+  writeFileSync(helperPath, helper);
+  const lockPath = resolve(root, 'Cargo.lock');
+  const lock = readFileSync(lockPath, 'utf8').replace(/(name = "(?:pico4u-vr-sleep-workaround|steamvr-brightness-helper)"\r?\nversion = ")[^"]+(")/g, `$1${newVersion}$2`);
+  writeFileSync(lockPath, lock);
 
 } catch (err) {
   console.error("Error syncing versions:", err);

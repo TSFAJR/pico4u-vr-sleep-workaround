@@ -5,7 +5,7 @@ use crate::error::{AppError, ErrorCode};
 use crate::state::AppState;
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager, State};
-use tokio::time::{Duration, MissedTickBehavior, interval, sleep, timeout};
+use tokio::time::{Duration, MissedTickBehavior, interval, timeout};
 
 #[tauri::command]
 pub fn get_running(state: State<'_, AppState>) -> bool {
@@ -18,20 +18,43 @@ pub async fn start_keep_awake(
     state: State<'_, AppState>,
     mode: ConnectionMode,
 ) -> Result<(), AppError> {
+    ensure_keep_awake(&app, &state, mode).await
+}
+
+pub async fn ensure_keep_awake(
+    app: &AppHandle,
+    state: &AppState,
+    mode: ConnectionMode,
+) -> Result<(), AppError> {
+    ensure_keep_awake_checked(app, state, mode, || true).await
+}
+
+pub async fn ensure_keep_awake_checked(
+    app: &AppHandle,
+    state: &AppState,
+    mode: ConnectionMode,
+    valid: impl Fn() -> bool,
+) -> Result<(), AppError> {
     let _guard = state.operation.lock().await;
-    if state.is_running.load(Ordering::SeqCst) {
-        return Err(AppError::new(ErrorCode::AlreadyRunning));
+    if !valid() {
+        return Err(AppError::new(ErrorCode::Unknown));
     }
-    let config = load_config(&app);
+    if state.is_running.load(Ordering::SeqCst) {
+        return Ok(());
+    }
+    let config = load_config(app);
     config
         .validate()
         .map_err(|e| AppError::with(ErrorCode::Unknown, e))?;
     let serial = timeout(
         Duration::from_secs(25),
-        connection::require_target(&app, mode, &config.ip_address),
+        connection::require_target(app, mode, &config.ip_address),
     )
     .await
     .map_err(|_| AppError::new(ErrorCode::Timeout))??;
+    if !valid() {
+        return Err(AppError::new(ErrorCode::Unknown));
+    }
     state.is_running.store(true, Ordering::SeqCst);
     let debug = state.debug_mode.clone();
     let wake_app = app.clone();
@@ -72,47 +95,19 @@ pub async fn start_keep_awake(
         }
     });
     *state.keep_awake_task.lock().unwrap() = Some(task);
-    if config.dim_delay_hours > 0.0 {
-        let dim_task = tokio::spawn(async move {
-            sleep(Duration::from_secs_f64(config.dim_delay_hours * 3600.0)).await;
-            // Read the latest saved opt-in and slider value at the deadline.
-            // OpenVR runs independently even if the following ADB operation fails.
-            app.state::<crate::steamvr::SteamVr>()
-                .auto_dim(&load_config(&app));
-            let result = async {
-                if !connection::verify_pico(&app, &serial).await? {
-                    return Err(AppError::new(ErrorCode::DeviceLost));
-                }
-                run_adb_device_command(
-                    Some(&app),
-                    Some(&serial),
-                    "shell:settings put system screen_brightness 1",
-                )
-                .await
-                .map_err(AppError::from)
-            }
-            .await;
-            let _ = app.emit(
-                "debug-log",
-                match result {
-                    Ok(_) => "Auto-dim applied".to_string(),
-                    Err(e) => format!("Auto-dim: {e}"),
-                },
-            );
-        });
-        *state.dim_task.lock().unwrap() = Some(dim_task);
-    }
     Ok(())
 }
 
 #[tauri::command]
-pub async fn stop_keep_awake(state: State<'_, AppState>) -> Result<(), AppError> {
+pub async fn stop_keep_awake(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
     let _guard = state.operation.lock().await;
+    app.state::<crate::sleep::SleepService>()
+        .stop_monitoring(&app)
+        .await;
     state.is_running.store(false, Ordering::SeqCst);
     let wake = state.keep_awake_task.lock().unwrap().take();
-    let dim = state.dim_task.lock().unwrap().take();
     // Await cancellation before acknowledging stop, including any in-flight I/O.
-    for task in [wake, dim].into_iter().flatten() {
+    for task in [wake].into_iter().flatten() {
         task.abort();
         let _ = task.await;
     }

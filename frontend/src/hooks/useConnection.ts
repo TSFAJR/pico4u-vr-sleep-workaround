@@ -58,6 +58,15 @@ export function useConnection(
     return () => controller.abort()
   }, [config !== null, mode, ip])
 
+  // The backend may start keep-awake before frontend auto-connect completes.
+  // Reconcile from a verified connection instead of retaining a stale failure.
+  useEffect(() => {
+    if (running && isConnected(result, mode)) {
+      setAutoStatus('success')
+      setError(null)
+    }
+  }, [running, result, mode])
+
   const perform = useCallback(
     async (task: (signal: AbortSignal) => Promise<AppConfig>, automatic = false) => {
       const controller = lifecycle.current

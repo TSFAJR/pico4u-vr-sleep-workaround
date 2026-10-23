@@ -4,7 +4,7 @@ import { listen } from '@tauri-apps/api/event'
 import { latestThrottle, type SteamVrStatus } from '../lib/steamvr'
 import type { useSettings } from './useSettings'
 
-export function useSteamVr(settings: ReturnType<typeof useSettings>) {
+export function useSteamVr(settings: ReturnType<typeof useSettings>, sleeping = false) {
   const [status, setStatus] = useState<SteamVrStatus | null>(null)
   const [percent, setPercent] = useState(100)
   const [controlError, setControlError] = useState<string | null>(null)
@@ -63,6 +63,7 @@ export function useSteamVr(settings: ReturnType<typeof useSettings>) {
       })
   }
   const save = (value: number) => {
+    if (sleeping) return
     void settings
       .update({ steamvr_brightness_percent: value })
       .then(() => {

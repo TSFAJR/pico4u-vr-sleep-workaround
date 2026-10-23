@@ -86,7 +86,7 @@ const errors = {
 
 export const zhCN = {
   ...steamVrZh,
-  title: 'pico4u VR 防休眠工具',
+  title: 'PICO 4 Ultra 防休眠V睡工具',
   subtitle: '防止头显在长时间使用时进入休眠，避免追踪重置',
   instructions_header: '使用方法',
   instruction_wired_label: '有线连接：',

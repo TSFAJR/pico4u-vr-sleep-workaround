@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export function BrightnessSlider({
@@ -14,13 +14,12 @@ export function BrightnessSlider({
 }) {
   const id = useId()
   const { t } = useTranslation()
-  const buttonClass =
-    'h-8 w-8 shrink-0 rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] text-lg text-[var(--app-text)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-brand'
+  const buttonClass = 'step-button'
   return (
-    <div className='flex flex-col gap-2'>
-      <div className='flex items-center justify-between gap-3 text-sm'>
+    <div className='brightness-slider'>
+      <div className='brightness-label'>
         <label htmlFor={id}>{label}</label>
-        <output htmlFor={id} className='font-mono shrink-0'>
+        <output htmlFor={id} className='brightness-value'>
           {value}%
         </output>
       </div>
@@ -44,7 +43,8 @@ export function BrightnessSlider({
           disabled={disabled}
           aria-valuetext={`${value}%`}
           onChange={(event) => onChange(Number(event.currentTarget.value))}
-          className='w-full min-w-0 cursor-pointer accent-brand'
+          className='brightness-range'
+          style={{ '--range-fill': `${value}%` } as CSSProperties}
         />
         <button
           type='button'

@@ -39,3 +39,7 @@ cargo clippy --locked -- -D warnings
 - `tauri.conf.json`: fixed 400 × 700 window and bundling configuration.
 
 App version changes use `pnpm version patch` (or an explicit version), which synchronizes the frontend, Rust and Tauri versions. Dependency/UI refreshes do not bump the application version.
+
+## Sleep mode checks
+
+See [README_SLEEP.md](README_SLEEP.md) for detection, recovery and hardware acceptance. Run `cargo test --workspace --locked` and `cargo clippy --workspace --locked --all-targets -- -D warnings`. `scripts/test-sleep-ui.cjs` exercises the production UI against simulated Tauri responses at 400×700; set `PLAYWRIGHT_MODULE` to an existing Playwright module path, run the frontend preview on port 4173, then run `node scripts/test-sleep-ui.cjs`. It does not control VR hardware.

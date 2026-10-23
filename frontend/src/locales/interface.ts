@@ -1,0 +1,83 @@
+export const uiZh = {
+  ui_exit_title: '退出应用',
+  ui_exit_warning:
+    '防休眠、睡眠监测或亮度控制仍在运行。退出将停止这些任务、移除亮度遮罩并尝试恢复物理亮度，头显可能进入休眠。确定退出？',
+  ui_exit_confirm: '停止并退出',
+  ui_exit_unknown:
+    '无法确认服务状态。退出仍会执行清理；未完成的亮度恢复将在下次启动时提示。确定退出？',
+
+  ui_title: 'PICO 4 Ultra 防休眠V睡工具',
+  ui_keepawake: '防休眠',
+  ui_keepawake_desc: '防止 PICO 4 Ultra 进入休眠，保持设备持续运行',
+  ui_start: '启动防休眠',
+  ui_stop: '停止',
+  ui_current_status: '当前状态：',
+  ui_sleep_desc: '手动调暗画面，或启用自动睡眠检测',
+  ui_monitor_desc: '检测静止状态，自动调暗并保持防休眠',
+  ui_detection: '检测状态',
+  ui_brightness_desc: '通过 SteamVR 调节画面亮度，获得更舒适的体验',
+  ui_brightness_note: '调整 SteamVR 图像亮度（需要 SteamVR 运行）',
+  ui_minimize: '最小化',
+  ui_maximize: '最大化 / 还原',
+  ui_connected: '已连接',
+  ui_wireless: '无线',
+  ui_wired: '有线',
+  ui_connection: '设备连接',
+  ui_general: '常规设置',
+}
+
+export const uiEn = {
+  ui_exit_title: 'Exit application',
+  ui_exit_warning:
+    'Keep-awake, sleep monitoring or brightness control is active. Exiting will stop these tasks, remove the overlay and attempt to restore physical brightness. The headset may sleep. Exit now?',
+  ui_exit_confirm: 'Stop and exit',
+  ui_exit_unknown:
+    'Service status could not be read. Exiting will still run cleanup; unfinished brightness recovery will be offered on next launch. Exit now?',
+
+  ui_title: 'PICO 4 Ultra V-Sleep Tool',
+  ui_keepawake: 'Keep awake',
+  ui_keepawake_desc: 'Keep PICO 4 Ultra awake and running.',
+  ui_start: 'Start keep awake',
+  ui_stop: 'Stop',
+  ui_current_status: 'Status:',
+  ui_sleep_desc: 'Dim manually or enable automatic sleep detection.',
+  ui_monitor_desc: 'Detect inactivity and dim while keeping the headset awake.',
+  ui_detection: 'Detection',
+  ui_brightness_desc: 'Adjust SteamVR brightness for a comfortable view.',
+  ui_brightness_note: 'Requires SteamVR to be running.',
+  ui_minimize: 'Minimize',
+  ui_maximize: 'Maximize / restore',
+  ui_connected: 'Connected',
+  ui_wireless: 'Wireless',
+  ui_wired: 'USB',
+  ui_connection: 'Device connection',
+  ui_general: 'General',
+}
+
+export const uiJa = {
+  ui_exit_title: 'アプリを終了',
+  ui_exit_warning:
+    'スリープ回避・監視・輝度制御が動作中です。終了すると処理を停止し、遮蔽を解除して物理輝度の復元を試みます。ヘッドセットがスリープする可能性があります。終了しますか？',
+  ui_exit_confirm: '停止して終了',
+  ui_exit_unknown:
+    '状態を確認できません。終了時に後処理を実行し、未完了の輝度復元は次回起動時に案内します。終了しますか？',
+
+  ui_title: 'PICO 4 Ultra V睡ツール',
+  ui_keepawake: 'スリープ回避',
+  ui_keepawake_desc: 'PICO 4 Ultra のスリープを防ぎ、動作を維持します。',
+  ui_start: '回避を開始',
+  ui_stop: '停止',
+  ui_current_status: '現在の状態：',
+  ui_sleep_desc: '手動で減光、または自動睡眠検出を有効にします。',
+  ui_monitor_desc: '静止状態を検出して減光し、スリープ回避を維持します。',
+  ui_detection: '検出状況',
+  ui_brightness_desc: 'SteamVR の映像を快適な明るさに調整します。',
+  ui_brightness_note: 'SteamVR の起動が必要です。',
+  ui_minimize: '最小化',
+  ui_maximize: '最大化 / 元に戻す',
+  ui_connected: '接続済み',
+  ui_wireless: '無線',
+  ui_wired: '有線',
+  ui_connection: 'デバイス接続',
+  ui_general: '一般設定',
+}

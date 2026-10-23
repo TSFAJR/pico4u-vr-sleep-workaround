@@ -1,14 +1,14 @@
 //! Isolated OpenVR supervisor. No OpenVR library or ADB operation runs here.
 #[path = "../steamvr-helper/src/protocol.rs"]
 #[allow(dead_code)]
-mod protocol;
+pub(crate) mod protocol;
 use protocol::{Desired, Failure, Report};
 use serde::Serialize;
 use std::{
     collections::VecDeque,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::{Duration, Instant},
 };
@@ -19,19 +19,20 @@ use tokio::{
     sync::watch,
 };
 
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Status {
     revision: u64,
     enabled: bool,
     percent: u8,
     phase: String,
-    applied_percent: Option<u8>,
-    error: Option<Failure>,
+    pub applied_percent: Option<u8>,
+    pub error: Option<Failure>,
 }
 
 #[derive(Clone)]
 pub struct SteamVr {
     desired: watch::Sender<Desired>,
+    manual_generation: Arc<AtomicU64>,
     report: Arc<Mutex<Report>>,
     closed: Arc<AtomicBool>,
     closing: Arc<AtomicBool>,
@@ -41,6 +42,7 @@ impl Default for SteamVr {
     fn default() -> Self {
         Self {
             desired: watch::channel(Desired::default()).0,
+            manual_generation: Arc::new(AtomicU64::new(0)),
             report: Arc::new(Mutex::new(Report::default())),
             closed: Arc::new(AtomicBool::new(false)),
             closing: Arc::new(AtomicBool::new(false)),
@@ -49,17 +51,54 @@ impl Default for SteamVr {
 }
 
 impl SteamVr {
-    pub fn auto_dim(&self, config: &crate::config::AppConfig) {
-        if !config.auto_dim_steamvr
-            || config.auto_dim_steamvr_percent > 100
-            || self.closing.load(Ordering::SeqCst)
-        {
+    pub fn manual_generation(&self) -> u64 {
+        self.manual_generation.load(Ordering::SeqCst)
+    }
+    pub fn snapshot(&self) -> (bool, u8) {
+        let d = self.desired.borrow();
+        (d.enabled, d.percent)
+    }
+    pub fn detection(&self) -> protocol::DetectionReport {
+        self.report
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .detection
+            .clone()
+    }
+    pub fn set_detection(&self, config: protocol::DetectorConfig) {
+        self.desired.send_if_modified(|d| {
+            if d.detector == config {
+                false
+            } else {
+                d.detector = config;
+                d.revision += 1;
+                true
+            }
+        });
+    }
+    pub fn temporary_if_manual(&self, manual: u64, enabled: bool, percent: u8, seconds: u32) {
+        self.desired.send_if_modified(|d| {
+            if self.closing.load(Ordering::SeqCst)
+                || self.manual_generation.load(Ordering::SeqCst) != manual
+            {
+                return false;
+            }
+            d.revision += 1;
+            d.enabled = enabled;
+            d.percent = percent;
+            d.fade_ms = seconds * 1000;
+            true
+        });
+    }
+    pub fn temporary(&self, enabled: bool, percent: u8, seconds: u32) {
+        if self.closing.load(Ordering::SeqCst) {
             return;
         }
         self.desired.send_modify(|d| {
             d.revision += 1;
-            d.enabled = true;
-            d.percent = config.auto_dim_steamvr_percent;
+            d.enabled = enabled;
+            d.percent = percent;
+            d.fade_ms = seconds * 1000;
         });
     }
     pub fn start(&self, app: AppHandle, percent: u8) {
@@ -98,7 +137,9 @@ impl SteamVr {
             if request <= d.revision {
                 return false;
             }
+            self.manual_generation.fetch_add(1, Ordering::SeqCst);
             change(d);
+            d.fade_ms = 0;
             d.revision = request;
             true
         });
@@ -148,6 +189,7 @@ impl SteamVr {
                 self.publish(
                     &app,
                     Report {
+                        detection: Default::default(),
                         revision: target.revision,
                         phase: "error".into(),
                         applied_percent: if !target.enabled || target.percent == 100 {
@@ -177,6 +219,7 @@ impl SteamVr {
                 self.publish(
                     &app,
                     Report {
+                        detection: Default::default(),
                         revision: d.revision,
                         phase: "error".into(),
                         applied_percent: if !d.enabled || d.percent == 100 {
@@ -275,13 +318,15 @@ impl SteamVr {
                 }
                 sent = Some(target.clone());
             }
-            if safe_since.is_some_and(|time| time.elapsed() >= Duration::from_secs(1))
-                && acknowledged < target.revision
+            if safe_since.is_some_and(|time| {
+                time.elapsed() >= Duration::from_millis(1000 + u64::from(target.fade_ms))
+            }) && acknowledged < target.revision
             {
                 kill(&mut child).await;
                 self.publish(
                     app,
                     Report {
+                        detection: Default::default(),
                         revision: target.revision,
                         phase: "disabled".into(),
                         applied_percent: Some(100),
@@ -440,48 +485,6 @@ pub fn retry_steamvr(state: State<'_, SteamVr>, request: u64) -> Result<Status, 
 mod tests {
     use super::*;
 
-    #[test]
-    fn auto_dim_requires_saved_opt_in_and_uses_the_latest_percent() {
-        let state = SteamVr::default();
-        let mut config = crate::config::AppConfig::default();
-        state.auto_dim(&config);
-        assert!(!state.status().enabled);
-        assert_eq!(state.status().revision, 0);
-        config.auto_dim_steamvr = true;
-        config.steamvr_brightness_percent = 73;
-        config.auto_dim_steamvr_percent = 10;
-        state.change(1000, |d| d.percent = 50).unwrap();
-        state.auto_dim(&config);
-        assert!(state.status().enabled);
-        assert_eq!(state.status().percent, 10);
-        assert_eq!(state.status().revision, 1001);
-        assert_eq!(config.steamvr_brightness_percent, 73);
-        state
-            .change(1002, |d| {
-                d.enabled = false;
-                d.percent = 100;
-            })
-            .unwrap();
-        assert!(!state.status().enabled);
-        assert_eq!(state.status().percent, 100);
-    }
-
-    #[test]
-    fn auto_dim_does_not_override_shutdown_or_accept_invalid_percent() {
-        let state = SteamVr::default();
-        let mut config = crate::config::AppConfig {
-            auto_dim_steamvr: true,
-            auto_dim_steamvr_percent: 101,
-            ..crate::config::AppConfig::default()
-        };
-        state.auto_dim(&config);
-        assert!(!state.status().enabled);
-        config.auto_dim_steamvr_percent = 0;
-        state.begin_shutdown();
-        state.auto_dim(&config);
-        assert!(!state.status().enabled);
-    }
-
     #[cfg(windows)]
     fn sleeper() -> Child {
         Command::new("powershell.exe")
@@ -525,6 +528,21 @@ mod tests {
         kill(&mut owned).await;
         assert!(owned.try_wait().unwrap().is_some());
         assert!(start.elapsed() < Duration::from_secs(1));
+    }
+    #[test]
+    fn manual_restore_invalidates_pending_sleep_brightness() {
+        let state = SteamVr::default();
+        let token = state.manual_generation();
+        state
+            .change(10, |d| {
+                d.enabled = false;
+                d.percent = 100;
+            })
+            .unwrap();
+        state.temporary_if_manual(token, true, 0, 3);
+        assert_eq!(state.snapshot(), (false, 100));
+        state.temporary_if_manual(state.manual_generation(), true, 5, 3);
+        assert_eq!(state.snapshot(), (true, 5));
     }
     #[test]
     fn stale_slider_cannot_override_restore() {

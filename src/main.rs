@@ -9,6 +9,7 @@ mod config;
 mod connection;
 mod error;
 mod runtime;
+mod sleep;
 mod state;
 mod steamvr;
 
@@ -17,16 +18,56 @@ use crate::runtime::*;
 use crate::state::AppState;
 use tauri::Manager;
 
+fn shutdown_application(app: tauri::AppHandle) {
+    let service = app.state::<steamvr::SteamVr>().inner().clone();
+    if !service.begin_shutdown() {
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        {
+            let state = app.state::<AppState>();
+            state
+                .is_running
+                .store(false, std::sync::atomic::Ordering::SeqCst);
+            if let Some(task) = state.keep_awake_task.lock().unwrap().take() {
+                task.abort();
+            }
+        }
+        app.state::<sleep::SleepService>().shutdown(&app).await;
+        service.shutdown().await;
+        if let Some(child) = app.state::<AppState>().adb_child.lock().unwrap().take() {
+            let _ = child.kill();
+        }
+        app.exit(0);
+    });
+}
+
+#[tauri::command]
+fn exit_app(app: tauri::AppHandle) {
+    shutdown_application(app);
+}
+
 fn main() {
     tauri::Builder::default()
+        // Register first, before setup can start ADB, monitoring or the helper.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .manage(AppState::default())
         .manage(steamvr::SteamVr::default())
+        .manage(sleep::SleepService::default())
         .setup(|app| {
             app.state::<steamvr::SteamVr>().start(
                 app.handle().clone(),
                 config::load_config(app.handle()).steamvr_brightness_percent,
             );
+            app.state::<sleep::SleepService>()
+                .start(app.handle().clone());
             if let Some(window) = app.get_webview_window("main") {
                 let suffix = if cfg!(debug_assertions) { "-dev" } else { "" };
                 let title = format!("pico4u V睡ツール v{}{}", env!("CARGO_PKG_VERSION"), suffix);
@@ -35,6 +76,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            exit_app,
             check_connection_status,
             try_auto_connect,
             setup_wireless,
@@ -48,6 +90,11 @@ fn main() {
             steamvr::set_steamvr_enabled,
             steamvr::set_steamvr_percent,
             steamvr::restore_steamvr,
+            sleep::get_sleep_status,
+            sleep::enter_sleep,
+            sleep::exit_sleep,
+            sleep::set_sleep_monitoring,
+            sleep::calibrate_sleep,
             steamvr::retry_steamvr
         ])
         .build(tauri::generate_context!())
@@ -57,22 +104,13 @@ fn main() {
                 api, code: None, ..
             } = &event
             {
-                let service = app.state::<steamvr::SteamVr>().inner().clone();
-                if service.begin_shutdown() {
-                    api.prevent_exit();
-                    let handle = app.clone();
-                    tauri::async_runtime::spawn(async move {
-                        service.shutdown().await;
-                        handle.exit(0);
-                    });
-                }
+                api.prevent_exit();
+                shutdown_application(app.clone());
             }
             if let tauri::RunEvent::Exit = event {
                 let state = app.state::<AppState>();
-                for slot in [&state.keep_awake_task, &state.dim_task] {
-                    if let Some(task) = slot.lock().unwrap().take() {
-                        task.abort();
-                    }
+                if let Some(task) = state.keep_awake_task.lock().unwrap().take() {
+                    task.abort();
                 }
                 // Kill only the foreground server child created by this app.
                 // Never kill a shared server, or all processes named adb.exe.

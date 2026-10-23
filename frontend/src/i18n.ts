@@ -1,3 +1,5 @@
+import { uiZh, uiEn, uiJa } from './locales/interface'
+import { sleepEn, sleepZh, sleepJa } from './locales/sleep'
 import i18n from 'i18next'
 import type { InitOptions } from 'i18next'
 import { initReactI18next } from 'react-i18next'
@@ -195,11 +197,13 @@ const errorsJa = {
 }
 
 export const resources = {
-  'zh-CN': { translation: zhCN },
+  'zh-CN': { translation: { ...zhCN, ...uiZh, ...sleepZh } },
   en: {
     translation: {
       ...steamVrEn,
-      title: 'pico4u VR Sleep Workaround',
+      ...uiEn,
+      ...sleepEn,
+      title: 'PICO 4 Ultra V-Sleep Tool',
       subtitle:
         'Prevent your headset from entering sleep mode and losing tracking during extended use',
       instructions_header: 'How to Use',
@@ -337,7 +341,9 @@ export const resources = {
   ja: {
     translation: {
       ...steamVrJa,
-      title: 'pico4u V睡ツール',
+      ...uiJa,
+      ...sleepJa,
+      title: 'PICO 4 Ultra V睡ツール',
       subtitle: 'V睡中にヘッドセットがスリープしてトラッキングがリセットされるのを防ぎます',
       instructions_header: '使い方',
       instruction_wired_label: '有線接続:',

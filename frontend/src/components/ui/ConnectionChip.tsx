@@ -12,7 +12,7 @@ export function ConnectionChip({ mode, ip, connected }: ConnectionChipProps) {
   const { t } = useAppContext()
 
   return (
-    <div className='inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-black/5 dark:bg-white/10 text-[var(--app-text)] border border-[var(--app-border)] shadow-2xs'>
+    <div className={`connection-chip ${connected ? 'connected' : ''}`}>
       <span
         className={`w-2 h-2 rounded-full shrink-0 ${
           connected ? 'bg-brand' : 'bg-gray-400 dark:bg-gray-600'
@@ -39,13 +39,10 @@ export function ConnectionChip({ mode, ip, connected }: ConnectionChipProps) {
       )}
       <span>
         {connected
-          ? mode === 'wireless'
-            ? ip
-              ? t('chip_wireless_connected_ip', { ip })
-              : t('chip_wireless_connected')
-            : t('chip_wired_connected')
+          ? `${t(mode === 'wireless' ? 'ui_wireless' : 'ui_wired')}${mode === 'wireless' && ip ? ` · ${ip}` : ''}`
           : t('chip_disconnected')}
       </span>
+      {connected && <strong>{t('ui_connected')}</strong>}
     </div>
   )
 }

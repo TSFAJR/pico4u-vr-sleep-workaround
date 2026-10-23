@@ -1,59 +1,53 @@
-<h1>
-  <img src="./icons/128x128.png" width="72" alt="Icon" valign="middle" />
-  pico4u-vr-sleep-workaround
-</h1>
+# PICO 4 Ultra V-Sleep Tool
 
-pico4u-vr-sleep-workaround is a workaround tool designed to prevent the Pico 4 Ultra VR headset from going to sleep during development or specific use cases. It operates by periodically sending a keep-alive signal via ADB.
+A Windows tool for extended PICO 4 Ultra sessions and V-sleep, with USB/wireless ADB, keep-awake, sleep dimming and SteamVR brightness control.
 
-[日本語版（Japanese Version）はこちら](.github/README_ja.md)
+[简体中文](.github/README_zh-CN.md) · [日本語](.github/README_ja.md) · [Download installers](https://github.com/TSFAJR/pico4u-vr-sleep-workaround/releases)
 
-[简体中文说明](.github/README_zh-CN.md)
+## Features and how they work
 
-## 🌟 Features
-
-- **SteamVR software brightness**: Independent 0–100% dimming on the homepage, ±1% fine adjustment and a Windows restore button. Optional auto-dimming uses a separate brightness preset. See [SteamVR setup and recovery](README_STEAMVR.md).
-
-- **Keep-Alive Signal**: Prevents the headset from entering sleep mode by sending the `keyevent 224` (wake up) command at a configurable interval (default: 3 seconds).
-- **Connection Modes**: Supports both Wired (USB) and Wireless (TCP/IP) ADB connections.
-- **Device Validation**: Automatically detects the connected device and verifies it is a Pico 4 Ultra (checks for `A9210` in the model name).
-- **Auto-Dimming**: Optionally dims the headset's screen brightness to the lowest level (`1`) after a configurable delay (in hours) to prevent screen burn-in and save power.
-- **Multi-language Support**: User Interface is available in English, Japanese, and Simplified Chinese. The initial language follows your system; change it in Settings and click Apply Changes to save your choice.
-
-## 📸 Screenshots
-
-Current UI at 400×700, captured at 2× resolution. Connection details, running state and logs use demonstration data; these screenshots illustrate the interface rather than a hardware test.
-
-| Keep-awake and live SteamVR brightness | Dark theme |
+| Feature | Implementation |
 | --- | --- |
-| ![Running screen with 35% SteamVR brightness, 1% adjustment buttons and Restore 100%](assets/screenshots/en-home.png) | ![Running screen in the dark theme](assets/screenshots/en-home-dark.png) |
-| **Independent auto-dim preset** | **USB / wireless connection wizard** |
-| ![Settings with an independent 5% auto-dim preset, wake interval and Apply / Cancel](assets/screenshots/en-preset.png) | ![Connection wizard offering USB and Wi-Fi](assets/screenshots/en-connection.png) |
-| **Connection error and troubleshooting** | **Event log** |
-| ![USB connection error with troubleshooting suggestions](assets/screenshots/en-error.png) | ![Event log with example ADB and OpenVR messages](assets/screenshots/en-logs.png) |
+| Keep awake | Sends `input keyevent 224` over ADB periodically, every 3 seconds by default. |
+| USB / wireless connection | Checks the headset and debugging authorization. USB setup enables wireless ADB; subsequent connections use the headset IP, with automatic reconnection support. |
+| Manual sleep mode | Saves recovery information, lowers headset backlight with `cmd display set-brightness`, and applies a separate SteamVR sleep brightness preset. |
+| Automatic sleep detection | Samples headset motion through OpenVR. Calibrated movement, optional rotation and controller input determine sustained low activity, triggering dimming after the configured duration. Includes confirmation and cooldown settings. |
+| SteamVR brightness | A separate helper uses a head-relative black OpenVR overlay covering both eyes. Opacity provides 0–100% dimming, ±1% adjustment and fades without changing backlight. No OyasumiVR installation, MQTT or root required. |
+| Recovery | Exit sleep restores recorded software brightness and headset backlight. When exact backlight recovery is unavailable, it uses the configured fallback, default 50%. Failed recovery can be retried. Restore 100% only removes SteamVR dimming. |
+| Desktop controls | Supports controller-emulated pointer dragging and single-instance operation. Exiting with active tasks asks for confirmation and cleans up this tool’s tasks and helper processes. |
+| Settings and logs | English, Japanese and Simplified Chinese; light/dark themes, ⓘ explanations and activity logs. |
 
-The homepage value (35% here) applies immediately; the settings preset (5% here) is saved separately with Apply Changes and only takes effect at the auto-dim deadline. Restore 100% leaves the preset unchanged.
+## Quick start
 
-<details>
-<summary>Language, theme and general settings</summary>
+### 1. Connect the headset
 
-![Settings with language, theme, auto-dim delay and synchronization options](assets/screenshots/en-settings.png)
+Enable Developer Mode and USB Debugging on the headset first (menu names may vary by system version):
 
-</details>
+1. Open **Settings > General > About**.
+2. Select **Software Version** seven times to enable Developer Mode.
+3. Return to **Settings > Developer** and enable **USB Debugging**.
+4. Connect the headset to the PC with a USB data cable. Put on the headset and accept **Allow USB debugging**; selecting **Always allow** is recommended.
 
-## 🔧 Prerequisites: Enable USB Debugging
+- **USB:** select Wired (USB), complete the checks and keep the cable connected.
+- **Wireless:** put the PC and headset on the same LAN (Ethernet is fine for the PC). Complete wireless setup over USB, then unplug after success. Headset restarts usually require wireless ADB setup again.
+- **Reserve the headset IP:** configure a **DHCP reservation / static lease (IP-to-MAC binding)** in your router so the headset keeps the same IP. This reduces reconnection failures. If it uses a randomized MAC, keep a stable MAC for that network. An IP reservation does not replace wireless ADB authorization.
 
-Before using the tool, you must enable Developer Mode and USB Debugging on your Pico 4 Ultra:
-1. On your headset, go to **Settings > General > About**.
-2. Click **Software Version** 7 times to enable Developer Mode.
-3. Go back to **Settings > Developer** and toggle **USB Debugging** to ON.
+![Choose a connection](assets/screenshots/en-connection.png)
 
-## 🚀 Setup & Usage
+### 2. Start keep-awake and dim as needed
 
-1. Download the latest release for your platform (Windows `nsis` / `msi` installers are provided).
-2. Install and launch the application.
-3. Connect your Pico 4 Ultra via USB or Wi-Fi (if a USB debugging prompt appears in the headset, select "Allow").
-4. Select your connection mode and click **Start Keep Alive**.
+Select Start keep awake. Use Enter sleep for immediate sleep dimming, or enable Automatic sleep detection. Manual SteamVR brightness is independent on the homepage; start SteamVR and connect the headset before using it.
 
-## 👨‍💻 For Developers
+![Home and main controls](assets/screenshots/en-sleep-home-light.png)
 
-For information on how to set up the development environment, build the app from source, and contribute to the project, please refer to the [CONTRIBUTING.md](./CONTRIBUTING.md) guide.
+### 3. Configure sleep presets and detection
+
+Open the gear button to set both sleep brightness presets, detection duration, trigger ease and fades. Wear the headset and remain naturally still for about 10 seconds to calibrate. Hover over ⓘ or click to expand help. Normal settings require Apply Changes; monitoring and calibration take effect immediately.
+
+![Sleep settings](assets/screenshots/en-sleep-settings.png)
+
+Use Exit sleep when finished resting; keep-awake continues. Stop keep-awake or close the app when ending your session.
+
+> Low activity cannot prove sleep. VD desktop mode can still provide headset motion while controller button input may be unavailable; wearing detection depends on the runtime. Minimum backlight may still glow. SteamVR 0% can be restored from the Windows app.
+
+Screenshots show the current UI with demonstration data. For development and builds, see [CONTRIBUTING](CONTRIBUTING.md).

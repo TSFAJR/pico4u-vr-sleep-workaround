@@ -1,3 +1,4 @@
+import { useAppDialog } from './useAppDialog'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { listen } from '@tauri-apps/api/event'
@@ -5,6 +6,7 @@ import { useSettings } from './useSettings'
 import { useConnection } from './useConnection'
 import { useRuntime } from './useRuntime'
 import { useTheme } from './useTheme'
+import { useSleep } from './useSleep'
 import { useSteamVr } from './useSteamVr'
 import { formatErrorLog, toAppError, type AppError } from '../lib/errors'
 import { normalizeLanguage } from '../lib/language'
@@ -19,8 +21,10 @@ export type { ConnectionStatus } from '../types'
 
 export function useAppLogic() {
   const { t, i18n } = useTranslation()
+  const dialog = useAppDialog()
   const settings = useSettings()
-  const steamvr = useSteamVr(settings)
+  const sleep = useSleep()
+  const steamvr = useSteamVr(settings, sleep.status?.sleeping ?? false)
   const runtime = useRuntime()
   const connection = useConnection(
     runtime.ready ? settings.config : null,
@@ -97,7 +101,15 @@ export function useAppLogic() {
   }
 
   const connectManual = async (ip?: string) => {
-    const address = ip ?? window.prompt(t('prompt_enter_ip'), config?.ip_address ?? '')
+    const address =
+      ip ??
+      (await dialog.ask({
+        kind: 'input',
+        title: t('btn_connect_manual'),
+        message: t('prompt_enter_ip'),
+        confirmText: t('btn_connect_manual'),
+        defaultValue: config?.ip_address ?? '',
+      }))
     if (!address) return false
     runtime.addLog(t('log_connecting_manual', { ip: address }))
     const connected = await connection.connect('wireless', address)
@@ -108,6 +120,17 @@ export function useAppLogic() {
   }
 
   const toggleKeepAwake = async () => {
+    if (
+      runtime.running &&
+      (sleep.status?.monitoring || sleep.status?.sleeping) &&
+      !(await dialog.ask({
+        kind: 'confirm',
+        title: t('ui_stop'),
+        message: t('sleep_stop_warning'),
+        confirmText: t('ui_stop'),
+      }))
+    )
+      return
     const wasRunning = runtime.running
     const interval = config?.keep_awake_interval_secs ?? 3
     await runtime.toggle(mode, connection.connected, connection.busy || settings.isSaving)
@@ -127,12 +150,14 @@ export function useAppLogic() {
   )
 
   return {
+    dialog,
     t,
     i18n,
     theme,
     setTheme,
     settings,
     steamvr,
+    sleep,
     runtime,
     connection,
     setupSteps,
@@ -147,9 +172,6 @@ export function useAppLogic() {
     isConnected: connection.connected,
     connectionStatus: status,
     connectionError,
-    dimAfterHours: config?.dim_delay_hours ?? 1,
-    autoDimSteamVr: config?.auto_dim_steamvr ?? false,
-    autoDimSteamVrPercent: config?.auto_dim_steamvr_percent ?? 100,
     keepAwakeInterval: config?.keep_awake_interval_secs ?? 3,
     changeLanguage: (language: string) => {
       void i18n.changeLanguage(normalizeLanguage(language))
@@ -161,9 +183,6 @@ export function useAppLogic() {
     setupWireless,
     connectManual,
     toggleKeepAwake,
-    updateDimDelay: (hours: number) => settings.update({ dim_delay_hours: hours }),
-    updateAutoDimSteamVr: (enabled: boolean, percent: number) =>
-      settings.update({ auto_dim_steamvr: enabled, auto_dim_steamvr_percent: percent }),
     updateKeepAwakeInterval: (seconds: number) =>
       settings.update({ keep_awake_interval_secs: seconds }),
     autoConnectStatus: connection.autoStatus,

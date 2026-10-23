@@ -1,6 +1,6 @@
 {
   "name": "pico4u-vr-sleep-workaround",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Pico 4 Ultra Sleep Workaround",
   "author": "ryium",
   "license": "MIT",
@@ -14,7 +14,7 @@
     "dev": "tauri dev",
     "build": "tauri build",
     "tauri": "tauri",
-    "version": "node scripts/sync-version.mjs && git add frontend/package.json Cargo.toml tauri.conf.json"
+    "version": "node scripts/sync-version.mjs && git add frontend/package.json Cargo.toml steamvr-helper/Cargo.toml Cargo.lock tauri.conf.json"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4"

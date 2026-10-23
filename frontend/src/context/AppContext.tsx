@@ -1,3 +1,4 @@
+import { AppDialog } from '../components/ui/AppDialog'
 import { createContext, useContext, ReactNode } from 'react'
 import { useAppLogic } from '../hooks/useAppLogic'
 
@@ -8,7 +9,12 @@ const AppContext = createContext<AppContextType | null>(null)
 export function AppContextProvider({ children }: { children: ReactNode }) {
   const logic = useAppLogic()
 
-  return <AppContext.Provider value={logic}>{children}</AppContext.Provider>
+  return (
+    <AppContext.Provider value={logic}>
+      {children}
+      <AppDialog dialog={logic.dialog} />
+    </AppContext.Provider>
+  )
 }
 
 export function useAppContext() {

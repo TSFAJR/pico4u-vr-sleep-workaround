@@ -1,16 +1,15 @@
+import { defaultSleepConfig } from '../types'
 import { expect, it, vi } from 'vitest'
 import { configWriter } from './settings'
 import { isConnected } from '../types'
 import type { AppConfig } from '../types'
 
 const initial: AppConfig = {
-  dim_delay_hours: 1,
+  sleep: defaultSleepConfig,
   keep_awake_interval_secs: 3,
   ip_address: '',
   last_connection_mode: 'wired',
   steamvr_brightness_percent: 100,
-  auto_dim_steamvr: false,
-  auto_dim_steamvr_percent: 100,
 }
 it('merges consecutive saves and preserves explicit null in order', async () => {
   let release!: () => void
@@ -24,7 +23,7 @@ it('merges consecutive saves and preserves explicit null in order', async () => 
     )
     .mockResolvedValue(undefined)
   const update = configWriter(initial, save)
-  const first = update({ dim_delay_hours: 2 })
+  const first = update({ sleep: { ...defaultSleepConfig, minutes: 20 } })
   const second = update({ keep_awake_interval_secs: 5, last_connection_mode: null })
   await Promise.resolve()
   expect(save).toHaveBeenCalledTimes(1)
@@ -33,7 +32,7 @@ it('merges consecutive saves and preserves explicit null in order', async () => 
   await second
   expect(save.mock.calls[1][0]).toEqual({
     ...initial,
-    dim_delay_hours: 2,
+    sleep: { ...defaultSleepConfig, minutes: 20 },
     keep_awake_interval_secs: 5,
     last_connection_mode: null,
   })
@@ -41,9 +40,9 @@ it('merges consecutive saves and preserves explicit null in order', async () => 
 it('surfaces save failure without poisoning subsequent valid edits', async () => {
   const save = vi.fn().mockRejectedValueOnce(new Error('disk')).mockResolvedValue(undefined)
   const update = configWriter(initial, save)
-  await expect(update({ dim_delay_hours: 2 })).rejects.toThrow('disk')
+  await expect(update({ sleep: { ...defaultSleepConfig, minutes: 20 } })).rejects.toThrow('disk')
   await expect(update({ keep_awake_interval_secs: 4 })).resolves.toMatchObject({
-    dim_delay_hours: 1,
+    sleep: defaultSleepConfig,
     keep_awake_interval_secs: 4,
   })
 })

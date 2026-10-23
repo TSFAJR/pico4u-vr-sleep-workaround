@@ -15,13 +15,16 @@ impl Failure {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct Desired {
     pub revision: u64,
     pub enabled: bool,
     pub percent: u8,
     pub retry: u64,
     pub quit: bool,
+    pub detector: DetectorConfig,
+    pub fade_ms: u32,
 }
 
 impl Default for Desired {
@@ -32,12 +35,16 @@ impl Default for Desired {
             percent: 100,
             retry: 0,
             quit: false,
+            detector: DetectorConfig::default(),
+            fade_ms: 0,
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct Report {
+    pub detection: DetectionReport,
     pub revision: u64,
     pub phase: String,
     pub applied_percent: Option<u8>,
@@ -49,6 +56,7 @@ impl Default for Report {
         Self {
             revision: 0,
             phase: "disabled".into(),
+            detection: DetectionReport::default(),
             applied_percent: Some(100),
             error: None,
         }
@@ -120,4 +128,57 @@ mod tests {
         let invalid = [([f32::NAN; 4], eye(0.0)); 2];
         assert!(covering_width(&invalid).is_err());
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct DetectorConfig {
+    pub enabled: bool,
+    pub generation: u64,
+    pub minutes: u32,
+    pub sensitivity: u8,
+    pub rotation: bool,
+    pub controllers: bool,
+    pub calibrating: bool,
+    pub noise_position: f64,
+    pub noise_rotation: f64,
+}
+impl Default for DetectorConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            generation: 0,
+            minutes: 15,
+            sensitivity: 3,
+            rotation: true,
+            controllers: true,
+            calibrating: false,
+            noise_position: 0.0005,
+            noise_rotation: 0.05,
+        }
+    }
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct MotionWindow {
+    pub seconds: u32,
+    pub distance: f64,
+    pub rotation: f64,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct DetectionReport {
+    pub generation: u64,
+    pub valid: bool,
+    pub elapsed_secs: u32,
+    pub candidate: bool,
+    pub activity: bool,
+    pub controllers_available: bool,
+    pub presence_available: bool,
+    pub windows: Vec<MotionWindow>,
+    pub distance_threshold: f64,
+    pub rotation_threshold: f64,
+    pub calibration_progress: u8,
+    pub calibration: Option<[f64; 2]>,
+    pub error: Option<Failure>,
 }

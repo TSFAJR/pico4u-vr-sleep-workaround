@@ -7,7 +7,7 @@ use crate::connection::{
 use crate::error::{AppError, ErrorCode, classify_connect_reply};
 use crate::state::AppState;
 use std::sync::atomic::Ordering;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::time::{Duration, timeout};
 
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(25);
@@ -284,9 +284,19 @@ pub async fn get_config(app: AppHandle) -> Result<AppConfig, AppError> {
 pub async fn save_config_cmd(
     app: AppHandle,
     state: State<'_, AppState>,
-    config: AppConfig,
+    mut config: AppConfig,
 ) -> Result<(), AppError> {
     let _guard = state.operation.lock().await;
+    let _config_guard = state.config_write.lock().await;
+    let current = load_config(&app);
+    // These fields are owned by immediate monitoring/calibration commands.
+    let sleeping = app.state::<crate::sleep::SleepService>().status();
+    if sleeping.sleeping || sleeping.busy {
+        config.steamvr_brightness_percent = current.steamvr_brightness_percent;
+    }
+    config.sleep.enabled = current.sleep.enabled;
+    config.sleep.noise_position = current.sleep.noise_position;
+    config.sleep.noise_rotation = current.sleep.noise_rotation;
     config
         .validate()
         .map_err(|e| AppError::with(ErrorCode::Unknown, e))?;
