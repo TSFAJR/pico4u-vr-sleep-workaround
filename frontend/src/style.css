@@ -697,7 +697,7 @@ progress::-webkit-progress-value {
 }
 .modal-backdrop {
   position: fixed;
-  inset: 30px 0 0;
+  inset: 0;
   z-index: 50;
   padding: 24px;
   display: flex;

@@ -18,6 +18,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');
    window.__demo=()=>({config,sleep,vr});window.__failSave=false;
    const emit=(event,payload)=>{for(const id of listeners.get(event)||[]) callbacks.get(id)?.({event,id,payload});};
    window.__capabilities=(controllers,presence,enabled=true)=>{config.sleep.controllers=enabled;sleep={...sleep,revision:sleep.revision+1,detection:{...sleep.detection,controllers_available:controllers,presence_available:presence}};emit('sleep-status',sleep)};
+   window.__close=()=>emit('tauri://close-requested',{});
    window.__calibration=(reason,progress)=>{sleep={...sleep,revision:sleep.revision+1,reason,detection:{...sleep.detection,calibration_progress:progress}};emit('sleep-status',sleep)};
    window.__sleepError=()=>{sleep={...sleep,revision:sleep.revision+1,phase:'ERROR',error:{code:'restore_failed',detail:'Simulated ADB timeout: reconnect the same headset and retry.'},sleeping:false,recovery_pending:true};emit('sleep-status',sleep)};
    window.__TAURI_INTERNALS__={metadata:{currentWindow:{label:'main'},currentWebview:{label:'main'}},transformCallback:fn=>{callbacks.set(++id,fn);return id},unregisterCallback:id=>callbacks.delete(id),invoke:async(cmd,args={})=>{
@@ -49,16 +50,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');
   assert(await page.locator('.sleep-actions button').nth(1).isDisabled());
   assert(await page.locator('.hero-actions button').nth(1).isEnabled());
   assert(await page.locator('.hero-actions button').nth(1).evaluate(n=>n.classList.contains('primary')));
-  const brand=await page.locator('.brand-copy h1').boundingBox();
-  await page.mouse.move(brand.x+20,brand.y+10);await page.mouse.down();await page.waitForTimeout(100);
-  await page.evaluate(()=>{window.__cursor={x:380,y:240}});await page.waitForTimeout(150);
-  const count=await page.evaluate(()=>window.__positions.length);assert.equal(count,1);
-  assert.deepEqual(await page.evaluate(()=>window.__positions[0]),{Physical:{x:180,y:140}});
-  // WebView pointer events alone must not cause feedback while the OS cursor is stationary.
-  await page.mouse.move(brand.x+100,brand.y+50,{steps:5});await page.waitForTimeout(200);
-  assert.equal(await page.evaluate(()=>window.__positions.length),count);
-  await page.mouse.up();await page.evaluate(()=>{window.__cursor={x:500,y:400}});await page.waitForTimeout(100);
-  assert.equal(await page.evaluate(()=>window.__positions.length),count);
+  assert.equal(await page.locator('.titlebar').count(),0);
   // Explicit start / stop intent, independent of sleep controls.
   await page.locator('.hero-actions button').nth(1).click();
   assert(await page.locator('.hero-actions button').nth(1).isDisabled());
@@ -87,8 +79,6 @@ const assert=require('node:assert/strict');const fs=require('node:fs');
     }
   }
   await page.setViewportSize({width:1120,height:840});
-  await page.locator('.titlebar button').nth(0).click();await page.locator('.titlebar button').nth(1).click();
-  assert(await page.evaluate(()=>window.__calls.includes('plugin:window|minimize')&&window.__calls.includes('plugin:window|toggle_maximize')));
   await page.locator('.app-footer button').nth(1).click();assert(await page.getByRole('dialog').isVisible());await page.keyboard.press('Escape');
   await page.locator('.app-footer button').nth(0).click();assert(await page.getByRole('dialog').isVisible());
   await page.screenshot({path:`assets/screenshots/${language}-connection.png`});
@@ -113,10 +103,10 @@ const assert=require('node:assert/strict');const fs=require('node:fs');
   assert.equal(await page.locator('.sleep-capability-notes p').count(),0);
   await page.evaluate(()=>window.__capabilities(true,false));
   const exits=await page.evaluate(()=>window.__calls.filter(c=>c==='exit_app').length);
-  await page.locator('.titlebar button').nth(2).click();await page.locator('dialog[open]').waitFor();
+  await page.evaluate(()=>window.__close());await page.locator('dialog[open]').waitFor();
   assert.equal(await page.evaluate(()=>window.__calls.filter(c=>c==='exit_app').length),exits);
   await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>window.__calls.filter(c=>c==='exit_app').length),exits);
-  await page.locator('.titlebar button').nth(2).click();await page.locator('dialog button[type=submit]').click();await page.waitForTimeout(100);
+  await page.evaluate(()=>window.__close());await page.locator('dialog button[type=submit]').click();await page.waitForTimeout(100);
   assert.equal(await page.evaluate(()=>window.__calls.filter(c=>c==='exit_app').length),exits+1);
   const stops=await page.evaluate(()=>window.__calls.filter(c=>c==='stop_keep_awake').length);
   await page.locator('.hero-actions button').nth(1).click();
@@ -183,6 +173,8 @@ const assert=require('node:assert/strict');const fs=require('node:fs');
       await page.locator('.settings-fields').evaluate(n=>n.scrollTop=n.scrollHeight);
       const fit=await page.evaluate(()=>{const f=document.querySelector('.settings-footer').getBoundingClientRect();const b=document.querySelector('.settings-fields');return {footer:f.bottom<=innerHeight && f.top>=0,overflow:b.scrollWidth>b.clientWidth};});
       assert.deepEqual(fit,{footer:true,overflow:false});
+      const cover=await page.locator('.modal-backdrop').evaluate(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};});
+      assert.deepEqual(cover,{x:0,y:0,width,height},'Modal backdrop must cover the full webview');
       const restore=page.getByRole('dialog').locator('input[type=range]').nth(2);await restore.scrollIntoViewIfNeeded();
       assert(await restore.isVisible());
       await page.locator('.settings-fields').evaluate(n=>n.scrollTop=0);

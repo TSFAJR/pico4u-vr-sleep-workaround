@@ -1,10 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
-import { useEffect, useRef, type PointerEvent } from 'react'
+import { useEffect, useRef } from 'react'
 import { Icon } from '@charcoal-ui/react'
 import {
   getCurrentWindow,
   currentMonitor,
-  cursorPosition,
   LogicalSize,
   PhysicalPosition,
 } from '@tauri-apps/api/window'
@@ -12,20 +11,10 @@ import packageJson from '../../../package.json'
 import { useAppContext } from '../../context/AppContext'
 import { ConnectionChip } from './ConnectionChip'
 import logo from '../../assets/logo.png'
-import { createWindowDrag } from '../../lib/windowDrag'
 export function AppHeader({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { t, connectionMode, deviceIp, isConnected, dialog } = useAppContext()
   const version = `v${packageJson.version}`
   const title = `${t('ui_title')} ${version}`
-  const control = (action: 'minimize' | 'toggleMaximize') => {
-    try {
-      void getCurrentWindow()
-        [action]()
-        .catch(() => {})
-    } catch {
-      /* Browser preview */
-    }
-  }
   const exitPending = useRef(false)
   const requestExit = async () => {
     if (exitPending.current) return
@@ -89,42 +78,6 @@ export function AppHeader({ onOpenSettings }: { onOpenSettings: () => void }) {
       void listener.then((stop) => stop())
     }
   }, [])
-  // OS desktop coordinates stay stable when the WebView moves under the pointer.
-  const dragState = useRef<ReturnType<typeof createWindowDrag> | null>(null)
-  const endDrag = () => {
-    dragState.current?.stop()
-    dragState.current = null
-  }
-  useEffect(() => {
-    window.addEventListener('blur', endDrag)
-    return () => {
-      window.removeEventListener('blur', endDrag)
-      endDrag()
-    }
-  }, [])
-  const pointerDrag = (event: PointerEvent<HTMLElement>) => {
-    if (
-      !event.isPrimary ||
-      event.button !== 0 ||
-      !(event.target instanceof Element) ||
-      event.target.closest('button, input, a, [role="button"]')
-    )
-      return
-    event.preventDefault()
-    endDrag()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    const win = getCurrentWindow()
-    const drag = createWindowDrag({
-      cursor: cursorPosition,
-      position: () => win.outerPosition(),
-      maximized: () => win.isMaximized(),
-      move: (p) => win.setPosition(new PhysicalPosition(p.x, p.y)),
-      schedule: (callback) => requestAnimationFrame(callback),
-      cancel: (id) => cancelAnimationFrame(id),
-    })
-    dragState.current = drag
-    void drag.start()
-  }
   useEffect(() => {
     document.title = title
     try {
@@ -169,29 +122,7 @@ export function AppHeader({ onOpenSettings }: { onOpenSettings: () => void }) {
     })
   }, [])
   return (
-    <header
-      className='app-header'
-
-      onPointerDown={pointerDrag}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      onLostPointerCapture={endDrag}
-      onDoubleClick={(e) => {
-        if (e.target instanceof Element && !e.target.closest('button')) control('toggleMaximize')
-      }}
-    >
-      <div className='titlebar'>
-        <div className='titlebar-drag' />
-        <button aria-label={t('ui_minimize')} onClick={() => control('minimize')}>
-          −
-        </button>
-        <button aria-label={t('ui_maximize')} onClick={() => control('toggleMaximize')}>
-          □
-        </button>
-        <button className='window-close' aria-label={t('close')} onClick={() => void requestExit()}>
-          ×
-        </button>
-      </div>
+    <header className='app-header'>
       <div className='brand-row'>
         <img className='brand-logo' src={logo} alt='' draggable={false} />
         <div className='brand-copy'>
