@@ -1,10 +1,12 @@
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
 
 // Shared state for the background task
 pub struct AppState {
     pub keep_awake_task: Mutex<Option<JoinHandle<()>>>,
+    pub runtime_commit: Mutex<()>,
+    pub runtime_epoch: AtomicU64,
     pub is_running: Arc<AtomicBool>,
     pub debug_mode: Arc<AtomicBool>,
     pub adb_child: Mutex<Option<tauri_plugin_shell::process::CommandChild>>,
@@ -17,6 +19,8 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             keep_awake_task: Mutex::new(None),
+            runtime_commit: Mutex::new(()),
+            runtime_epoch: AtomicU64::new(0),
             is_running: Arc::new(AtomicBool::new(false)),
             debug_mode: Arc::new(AtomicBool::new(false)),
             adb_child: Mutex::new(None),

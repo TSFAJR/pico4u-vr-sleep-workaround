@@ -345,25 +345,21 @@ impl SleepService {
         Ok(())
     }
     async fn protect(&self, app: &AppHandle, token: u64) -> Result<String, String> {
-        let serial = match target(app).await {
-            Ok(s) => s,
-            Err(e) => {
-                let c = load_config(app);
-                if c.last_connection_mode == Some(ConnectionMode::Wireless)
-                    && self.epoch.load(Ordering::SeqCst) == token
-                {
-                    let endpoint = connection::endpoint(&c.ip_address)?;
-                    crate::adb_client::run_adb_host_command(
-                        Some(app),
-                        &format!("host:connect:{endpoint}"),
-                    )
-                    .await?;
-                    target(app).await?
-                } else {
-                    return Err(e);
-                }
-            }
-        };
+        let c = load_config(app);
+        let serial = app
+            .state::<crate::connection_manager::ConnectionManager>()
+            .ensure(
+                app,
+                c.last_connection_mode.unwrap_or(ConnectionMode::Wired),
+                &c.ip_address,
+                true,
+                false,
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+        if self.epoch.load(Ordering::SeqCst) != token {
+            return Err("cancelled".into());
+        }
         let c = load_config(app);
         ensure_keep_awake_checked(
             app,

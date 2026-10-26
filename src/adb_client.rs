@@ -59,7 +59,12 @@ pub async fn run_adb_host_command(
     app: Option<&AppHandle>,
     command: &str,
 ) -> Result<String, String> {
-    timeout(TIMEOUT, async {
+    let deadline = if command == "host:devices-l" {
+        Duration::from_secs(2)
+    } else {
+        TIMEOUT
+    };
+    timeout(deadline, async {
         let mut stream = connect_adb(app).await?;
 
         let req = format!("{:04x}{}", command.len(), command);

@@ -9,7 +9,7 @@ interface ConnectionChipProps {
 }
 
 export function ConnectionChip({ mode, ip, connected }: ConnectionChipProps) {
-  const { t } = useAppContext()
+  const { t, connectionStatus } = useAppContext()
 
   return (
     <div className={`connection-chip ${connected ? 'connected' : ''}`}>
@@ -40,7 +40,7 @@ export function ConnectionChip({ mode, ip, connected }: ConnectionChipProps) {
       <span>
         {connected
           ? `${t(mode === 'wireless' ? 'ui_wireless' : 'ui_wired')}${mode === 'wireless' && ip ? ` · ${ip}` : ''}`
-          : t('chip_disconnected')}
+          : t(connectionStatus?.phase === 'reconnecting' ? 'ui_reconnecting' : 'chip_disconnected')}
       </span>
       {connected && <strong>{t('ui_connected')}</strong>}
     </div>

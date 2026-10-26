@@ -4,7 +4,7 @@ use crate::connection::{
     self, ConnectionMode, ConnectionStatus, UsbProbe, parse_device_rows, probe_usb,
     wireless_candidates,
 };
-use crate::error::{AppError, ErrorCode, classify_connect_reply};
+use crate::error::{AppError, ErrorCode};
 use crate::state::AppState;
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -66,12 +66,11 @@ pub async fn check_connection_status(
     let mode = mode
         .or(config.last_connection_mode)
         .unwrap_or(ConnectionMode::Wired);
-    timeout(
-        OPERATION_TIMEOUT,
-        connection::status(&app, mode, &ip.unwrap_or(config.ip_address)),
-    )
-    .await
-    .map_err(|_| AppError::new(ErrorCode::Timeout))?
+    let ip = ip.unwrap_or(config.ip_address);
+    crate::connection_manager::ConnectionManager::refresh(app.clone(), mode, ip.clone());
+    Ok(app
+        .state::<crate::connection_manager::ConnectionManager>()
+        .snapshot(mode, &ip))
 }
 
 #[tauri::command]
@@ -81,47 +80,22 @@ pub async fn try_auto_connect(
     mode: ConnectionMode,
     ip: String,
 ) -> Result<ConnectionMode, AppError> {
-    let _guard = state.operation.lock().await;
-    if state.is_running.load(Ordering::SeqCst) {
+    let config = load_config(&app);
+    if state.is_running.load(Ordering::SeqCst)
+        && (config.last_connection_mode != Some(mode) || config.ip_address.trim() != ip.trim())
+    {
         return Err(AppError::new(ErrorCode::AlreadyRunning));
     }
-    timeout(OPERATION_TIMEOUT, async {
-        if mode == ConnectionMode::Wireless {
-            let target = connection::endpoint(&ip)?;
-            let reply = run_adb_host_command(Some(&app), &format!("host:connect:{target}")).await?;
-            classify_connect_reply(&reply)?;
-            connection::require_target(&app, mode, &ip).await?;
-        } else {
-            emit_progress(&app, SetupStep::Usb, StepState::Running, None);
-            match connection::require_target(&app, mode, &ip).await {
-                Ok(_) => {
-                    emit_progress(&app, SetupStep::Usb, StepState::Ok, None);
-                    emit_progress(&app, SetupStep::Authorized, StepState::Ok, None);
-                    emit_progress(&app, SetupStep::Pico, StepState::Ok, None);
-                }
-                Err(err) => {
-                    match err.code {
-                        ErrorCode::UsbUnauthorized => {
-                            emit_progress(&app, SetupStep::Usb, StepState::Ok, None);
-                            emit_progress(&app, SetupStep::Authorized, StepState::Failed, None);
-                        }
-                        ErrorCode::NotPico | ErrorCode::MultiplePico => {
-                            emit_progress(&app, SetupStep::Usb, StepState::Ok, None);
-                            emit_progress(&app, SetupStep::Authorized, StepState::Ok, None);
-                            emit_progress(&app, SetupStep::Pico, StepState::Failed, None);
-                        }
-                        _ => {
-                            emit_progress(&app, SetupStep::Usb, StepState::Failed, None);
-                        }
-                    }
-                    return Err(err);
-                }
-            }
-        }
-        Ok(mode)
-    })
-    .await
-    .map_err(|_| AppError::new(ErrorCode::Timeout))?
+    app.state::<crate::connection_manager::ConnectionManager>()
+        .connect(&app, mode, &ip)
+        .await?;
+    Ok(mode)
+}
+
+#[tauri::command]
+pub fn cancel_adb_connection(app: AppHandle) {
+    app.state::<crate::connection_manager::ConnectionManager>()
+        .cancel();
 }
 
 #[tauri::command]
@@ -129,31 +103,41 @@ pub async fn setup_wireless(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<SetupOutcome, AppError> {
+    let mut cancel = app
+        .state::<crate::connection_manager::ConnectionManager>()
+        .cancellation();
+    tokio::select! {
+        biased;
+        _ = cancel.changed() => Err(AppError::with(ErrorCode::Unknown, "connection_cancelled")),
+        result = setup_wireless_inner(&app, &state) => result,
+    }
+}
+async fn setup_wireless_inner(app: &AppHandle, state: &AppState) -> Result<SetupOutcome, AppError> {
     let _guard = state.operation.lock().await;
     if state.is_running.load(Ordering::SeqCst) {
         return Err(AppError::new(ErrorCode::AlreadyRunning));
     }
     timeout(OPERATION_TIMEOUT, async {
         // Step 1: Probe USB or check if wireless is already connected
-        emit_progress(&app, SetupStep::Usb, StepState::Running, None);
-        let output = run_adb_host_command(Some(&app), "host:devices-l").await?;
+        emit_progress(app, SetupStep::Usb, StepState::Running, None);
+        let output = run_adb_host_command(Some(app), "host:devices-l").await?;
         let rows = parse_device_rows(&output);
-        let config = load_config(&app);
+        let config = load_config(app);
 
         let usb_serial = match probe_usb(&rows) {
             UsbProbe::Ready(mut ser) => {
                 let s = ser.remove(0);
-                emit_progress(&app, SetupStep::Usb, StepState::Ok, None);
-                emit_progress(&app, SetupStep::Authorized, StepState::Ok, None);
+                emit_progress(app, SetupStep::Usb, StepState::Ok, None);
+                emit_progress(app, SetupStep::Authorized, StepState::Ok, None);
                 s
             }
             UsbProbe::Unauthorized => {
-                emit_progress(&app, SetupStep::Usb, StepState::Ok, None);
-                emit_progress(&app, SetupStep::Authorized, StepState::Failed, None);
+                emit_progress(app, SetupStep::Usb, StepState::Ok, None);
+                emit_progress(app, SetupStep::Authorized, StepState::Failed, None);
                 return Err(AppError::new(ErrorCode::UsbUnauthorized));
             }
             UsbProbe::Offline => {
-                emit_progress(&app, SetupStep::Usb, StepState::Failed, None);
+                emit_progress(app, SetupStep::Usb, StepState::Failed, None);
                 return Err(AppError::new(ErrorCode::UsbOffline));
             }
             UsbProbe::Missing => {
@@ -166,22 +150,22 @@ pub async fn setup_wireless(
                 };
                 let candidates = wireless_candidates(&rows, saved);
                 for target in candidates {
-                    if connection::verify_pico(&app, &target)
-                        .await
-                        .unwrap_or(false)
-                    {
+                    if connection::verify_pico(app, &target).await.unwrap_or(false) {
                         // Found active wireless PICO device!
                         let ip = target.split(':').next().unwrap_or(&target).to_string();
                         emit_progress(
-                            &app,
+                            app,
                             SetupStep::Usb,
                             StepState::Ok,
                             Some("already_connected".into()),
                         );
-                        emit_progress(&app, SetupStep::Authorized, StepState::Ok, None);
-                        emit_progress(&app, SetupStep::Pico, StepState::Ok, None);
-                        emit_progress(&app, SetupStep::Wifi, StepState::Ok, None);
-                        emit_progress(&app, SetupStep::Wireless, StepState::Ok, None);
+                        emit_progress(app, SetupStep::Authorized, StepState::Ok, None);
+                        emit_progress(app, SetupStep::Pico, StepState::Ok, None);
+                        emit_progress(app, SetupStep::Wifi, StepState::Ok, None);
+                        emit_progress(app, SetupStep::Wireless, StepState::Ok, None);
+                        app.state::<crate::connection_manager::ConnectionManager>()
+                            .ensure(app, ConnectionMode::Wireless, &ip, false, true)
+                            .await?;
                         return Ok(SetupOutcome {
                             ip,
                             already_connected: true,
@@ -189,24 +173,24 @@ pub async fn setup_wireless(
                     }
                 }
 
-                emit_progress(&app, SetupStep::Usb, StepState::Failed, None);
+                emit_progress(app, SetupStep::Usb, StepState::Failed, None);
                 return Err(AppError::new(ErrorCode::UsbNotFound));
             }
         };
 
         // Step 2: Verify PICO 4 Ultra
-        emit_progress(&app, SetupStep::Pico, StepState::Running, None);
-        if !connection::verify_pico(&app, &usb_serial).await? {
-            emit_progress(&app, SetupStep::Pico, StepState::Failed, None);
+        emit_progress(app, SetupStep::Pico, StepState::Running, None);
+        if !connection::verify_pico(app, &usb_serial).await? {
+            emit_progress(app, SetupStep::Pico, StepState::Failed, None);
             return Err(AppError::new(ErrorCode::NotPico));
         }
-        emit_progress(&app, SetupStep::Pico, StepState::Ok, None);
+        emit_progress(app, SetupStep::Pico, StepState::Ok, None);
 
         // Step 3: Wi-Fi state & IP
-        emit_progress(&app, SetupStep::Wifi, StepState::Running, None);
-        if let Some(false) = connection::wifi_enabled(&app, &usb_serial).await {
+        emit_progress(app, SetupStep::Wifi, StepState::Running, None);
+        if let Some(false) = connection::wifi_enabled(app, &usb_serial).await {
             emit_progress(
-                &app,
+                app,
                 SetupStep::Wifi,
                 StepState::Failed,
                 Some("wifi_disabled".into()),
@@ -214,24 +198,24 @@ pub async fn setup_wireless(
             return Err(AppError::new(ErrorCode::WifiDisabled));
         }
 
-        let ip = connection::wifi_ip(&app, &usb_serial)
+        let ip = connection::wifi_ip(app, &usb_serial)
             .await?
             .ok_or_else(|| {
                 emit_progress(
-                    &app,
+                    app,
                     SetupStep::Wifi,
                     StepState::Failed,
                     Some("wifi_not_connected".into()),
                 );
                 AppError::new(ErrorCode::WifiNotConnected)
             })?;
-        emit_progress(&app, SetupStep::Wifi, StepState::Ok, Some(ip.clone()));
+        emit_progress(app, SetupStep::Wifi, StepState::Ok, Some(ip.clone()));
 
         // Step 4: Enable TCP/IP on headset & connect
-        emit_progress(&app, SetupStep::Wireless, StepState::Running, None);
-        if let Err(e) = run_adb_device_command(Some(&app), Some(&usb_serial), "tcpip:5555").await {
+        emit_progress(app, SetupStep::Wireless, StepState::Running, None);
+        if let Err(e) = run_adb_device_command(Some(app), Some(&usb_serial), "tcpip:5555").await {
             emit_progress(
-                &app,
+                app,
                 SetupStep::Wireless,
                 StepState::Failed,
                 Some("tcpip_failed".into()),
@@ -239,31 +223,14 @@ pub async fn setup_wireless(
             return Err(AppError::with(ErrorCode::TcpipFailed, e));
         }
 
-        let target = connection::endpoint(&ip)?;
-        let mut last_error = AppError::new(ErrorCode::WirelessNotFound);
-
-        for _attempt in 0..3 {
-            tokio::time::sleep(Duration::from_secs(2)).await;
-            if let Ok(reply) =
-                run_adb_host_command(Some(&app), &format!("host:connect:{target}")).await
-                && let Err(e) = classify_connect_reply(&reply)
-            {
-                last_error = e;
-            }
-            if connection::target_device(&app, ConnectionMode::Wireless, &ip)
-                .await?
-                .is_some()
-            {
-                emit_progress(&app, SetupStep::Wireless, StepState::Ok, None);
-                return Ok(SetupOutcome {
-                    ip,
-                    already_connected: false,
-                });
-            }
-        }
-
-        emit_progress(&app, SetupStep::Wireless, StepState::Failed, None);
-        Err(last_error)
+        app.state::<crate::connection_manager::ConnectionManager>()
+            .connect(app, ConnectionMode::Wireless, &ip)
+            .await?;
+        emit_progress(app, SetupStep::Wireless, StepState::Ok, None);
+        Ok(SetupOutcome {
+            ip,
+            already_connected: false,
+        })
     })
     .await
     .map_err(|_| AppError::new(ErrorCode::Timeout))?

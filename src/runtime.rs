@@ -1,6 +1,6 @@
 use crate::adb_client::run_adb_device_command;
 use crate::config::load_config;
-use crate::connection::{self, ConnectionMode};
+use crate::connection::ConnectionMode;
 use crate::error::{AppError, ErrorCode};
 use crate::state::AppState;
 use std::sync::atomic::Ordering;
@@ -35,8 +35,9 @@ pub async fn ensure_keep_awake_checked(
     mode: ConnectionMode,
     valid: impl Fn() -> bool,
 ) -> Result<(), AppError> {
+    let epoch = state.runtime_epoch.load(Ordering::SeqCst);
     let _guard = state.operation.lock().await;
-    if !valid() {
+    if epoch != state.runtime_epoch.load(Ordering::SeqCst) || !valid() {
         return Err(AppError::new(ErrorCode::Unknown));
     }
     if state.is_running.load(Ordering::SeqCst) {
@@ -48,11 +49,13 @@ pub async fn ensure_keep_awake_checked(
         .map_err(|e| AppError::with(ErrorCode::Unknown, e))?;
     let serial = timeout(
         Duration::from_secs(25),
-        connection::require_target(app, mode, &config.ip_address),
+        app.state::<crate::connection_manager::ConnectionManager>()
+            .ensure(app, mode, &config.ip_address, true, true),
     )
     .await
     .map_err(|_| AppError::new(ErrorCode::Timeout))??;
-    if !valid() {
+    let _commit = state.runtime_commit.lock().unwrap();
+    if epoch != state.runtime_epoch.load(Ordering::SeqCst) || !valid() {
         return Err(AppError::new(ErrorCode::Unknown));
     }
     state.is_running.store(true, Ordering::SeqCst);
@@ -65,9 +68,10 @@ pub async fn ensure_keep_awake_checked(
         loop {
             timer.tick().await;
             let result = async {
-                if !connection::verify_pico(&wake_app, &wake_serial).await? {
-                    return Err(AppError::new(ErrorCode::DeviceLost));
-                }
+                wake_app
+                    .state::<crate::connection_manager::ConnectionManager>()
+                    .ensure(&wake_app, mode, &config.ip_address, true, false)
+                    .await?;
                 let power = run_adb_device_command(
                     Some(&wake_app),
                     Some(&wake_serial),
@@ -85,6 +89,11 @@ pub async fn ensure_keep_awake_checked(
                 Ok::<_, AppError>(())
             }
             .await;
+            if let Err(ref error) = result {
+                wake_app
+                    .state::<crate::connection_manager::ConnectionManager>()
+                    .invalidate(&wake_serial, error.clone());
+            }
             if debug.load(Ordering::Relaxed) {
                 let message = match result {
                     Ok(()) => "Keep Alive checked".to_string(),
@@ -100,16 +109,21 @@ pub async fn ensure_keep_awake_checked(
 
 #[tauri::command]
 pub async fn stop_keep_awake(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
-    let _guard = state.operation.lock().await;
-    app.state::<crate::sleep::SleepService>()
-        .stop_monitoring(&app)
-        .await;
-    state.is_running.store(false, Ordering::SeqCst);
-    let wake = state.keep_awake_task.lock().unwrap().take();
-    // Await cancellation before acknowledging stop, including any in-flight I/O.
-    for task in [wake].into_iter().flatten() {
+    let wake = {
+        let _commit = state.runtime_commit.lock().unwrap();
+        state.runtime_epoch.fetch_add(1, Ordering::SeqCst);
+        state.is_running.store(false, Ordering::SeqCst);
+        state.keep_awake_task.lock().unwrap().take()
+    };
+    app.state::<crate::connection_manager::ConnectionManager>()
+        .cancel();
+    // No network/connection lock on the stop path.
+    if let Some(task) = wake {
         task.abort();
         let _ = task.await;
     }
+    app.state::<crate::sleep::SleepService>()
+        .stop_monitoring(&app)
+        .await;
     Ok(())
 }

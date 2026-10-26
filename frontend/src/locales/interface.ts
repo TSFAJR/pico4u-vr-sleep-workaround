@@ -1,4 +1,7 @@
 export const uiZh = {
+  ui_retry_connection: '重试连接',
+  ui_reconnecting: '连接中断，正在重连',
+  ui_keepawake_reconnecting: '防休眠已开启，等待连接恢复',
   ui_exit_title: '退出应用',
   ui_exit_warning:
     '防休眠、睡眠监测或亮度控制仍在运行。退出将停止这些任务、移除亮度遮罩并尝试恢复物理亮度，头显可能进入休眠。确定退出？',
@@ -27,6 +30,9 @@ export const uiZh = {
 }
 
 export const uiEn = {
+  ui_retry_connection: 'Retry connection',
+  ui_reconnecting: 'Disconnected · reconnecting',
+  ui_keepawake_reconnecting: 'Keep-awake enabled; waiting for connection',
   ui_exit_title: 'Exit application',
   ui_exit_warning:
     'Keep-awake, sleep monitoring or brightness control is active. Exiting will stop these tasks, remove the overlay and attempt to restore physical brightness. The headset may sleep. Exit now?',
@@ -55,6 +61,9 @@ export const uiEn = {
 }
 
 export const uiJa = {
+  ui_retry_connection: '接続を再試行',
+  ui_reconnecting: '切断・再接続中',
+  ui_keepawake_reconnecting: 'スリープ防止有効・接続の復旧待ち',
   ui_exit_title: 'アプリを終了',
   ui_exit_warning:
     'スリープ回避・監視・輝度制御が動作中です。終了すると処理を停止し、遮蔽を解除して物理輝度の復元を試みます。ヘッドセットがスリープする可能性があります。終了しますか？',

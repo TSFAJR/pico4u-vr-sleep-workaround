@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
+import { poll } from '../lib/async'
 import { api } from '../lib/api'
 import type { ConnectionMode } from '../types'
 
@@ -34,16 +35,13 @@ export function useRuntime() {
     const unlisten = listen<string>('debug-log', (event) => {
       if (!controller.signal.aborted) addLog(event.payload)
     }).catch(() => () => {})
-    const poll = setInterval(() => {
-      void api
-        .running(controller.signal)
-        .then((value) => {
-          if (!controller.signal.aborted) setRunning(value)
-        })
-        .catch(() => {})
-    }, 2000)
+    poll(
+      () => api.running(controller.signal),
+      (value) => setRunning(value),
+      () => {},
+      controller.signal,
+    )
     return () => {
-      clearInterval(poll)
       controller.abort()
       void unlisten.then((stop) => stop())
       lock.current = false
@@ -51,7 +49,13 @@ export function useRuntime() {
   }, [addLog])
   const toggle = async (mode: ConnectionMode | null, connected: boolean, blocked: boolean) => {
     const controller = lifecycle.current
-    if (!controller || lock.current || !ready || blocked || (!running && (!mode || !connected)))
+    if (
+      !controller ||
+      lock.current ||
+      !ready ||
+      (blocked && !running) ||
+      (!running && (!mode || !connected))
+    )
       return
     lock.current = true
     setBusy(true)

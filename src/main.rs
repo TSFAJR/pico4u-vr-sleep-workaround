@@ -7,6 +7,7 @@ mod adb_client;
 mod commands;
 mod config;
 mod connection;
+mod connection_manager;
 mod error;
 mod runtime;
 mod sleep;
@@ -23,6 +24,8 @@ fn shutdown_application(app: tauri::AppHandle) {
     if !service.begin_shutdown() {
         return;
     }
+    app.state::<connection_manager::ConnectionManager>()
+        .shutdown();
     tauri::async_runtime::spawn(async move {
         {
             let state = app.state::<AppState>();
@@ -59,9 +62,11 @@ fn main() {
         }))
         .plugin(tauri_plugin_shell::init())
         .manage(AppState::default())
+        .manage(connection_manager::ConnectionManager::default())
         .manage(steamvr::SteamVr::default())
         .manage(sleep::SleepService::default())
         .setup(|app| {
+            connection_manager::ConnectionManager::start(app.handle().clone());
             app.state::<steamvr::SteamVr>().start(
                 app.handle().clone(),
                 config::load_config(app.handle()).steamvr_brightness_percent,
@@ -78,6 +83,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             exit_app,
             check_connection_status,
+            cancel_adb_connection,
             try_auto_connect,
             setup_wireless,
             start_keep_awake,

@@ -28,7 +28,7 @@
     ]
   },
   "productName": "pico4u-vr-sleep-workaround",
-  "version": "0.3.1",
+  "version": "0.3.1-rc1",
   "identifier": "com.tauri.pico4uvrsleepworkaround",
   "plugins": {},
   "app": {

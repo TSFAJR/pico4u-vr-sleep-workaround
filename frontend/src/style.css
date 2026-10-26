@@ -410,7 +410,7 @@ input:focus-visible {
   font-size: 21px;
   font-weight: 700;
   line-height: 1.25;
-  transition: background 0.15s;
+  transition: background-color 0.15s;
 }
 .action-button svg {
   flex-shrink: 0;
@@ -418,12 +418,12 @@ input:focus-visible {
   height: 27px;
 }
 .action-button.primary {
-  background: linear-gradient(120deg, #25b76d, #20ac61);
+  background: #21b46a linear-gradient(120deg, #ffffff08, #00000008);
   color: white;
   box-shadow: 0 5px 12px #17a25912;
 }
 .action-button.primary:hover:not(:disabled) {
-  background: #159d56;
+  background-color: #159d56;
 }
 .action-button.secondary {
   background: var(--app-bg);
@@ -543,7 +543,7 @@ input:focus-visible {
   background: #b8bec8;
   flex-shrink: 0;
   padding: 4px;
-  transition: background 0.15s;
+  transition: background-color 0.15s;
 }
 .toggle-track::after {
   content: '';

@@ -15,6 +15,8 @@ export function OperateScreen() {
     wirelessSetupStatus,
     setupSteps,
     runtimeError,
+    connectionStatus,
+    retryAutoConnect,
   } = useAppContext()
   const busy = runtime.busy || isConnecting || settings.isSaving || !runtime.ready
   return (
@@ -57,7 +59,7 @@ export function OperateScreen() {
           </button>
           <button
             className='action-button primary'
-            disabled={busy || !isRunning}
+            disabled={runtime.busy || !runtime.ready || !isRunning}
             onClick={() => {
               if (isRunning) void toggleKeepAwake()
             }}
@@ -69,8 +71,28 @@ export function OperateScreen() {
         <p className='running-status' role='status'>
           <span className={`status-dot ${isRunning ? 'active' : ''}`} />
           {t('ui_current_status')}{' '}
-          <strong>{t(isRunning ? 'status_running' : 'status_stopped')}</strong>
+          <strong>
+            {t(
+              isRunning
+                ? isConnected
+                  ? 'status_running'
+                  : 'ui_keepawake_reconnecting'
+                : 'status_stopped',
+            )}
+          </strong>
         </p>
+        {isRunning && !isConnected && connectionStatus?.phase === 'disconnected' && (
+          <div>
+            <ErrorCard error={connectionStatus.error ?? null} />
+            <button
+              className='action-button primary'
+              disabled={isConnecting}
+              onClick={() => void retryAutoConnect()}
+            >
+              {t('ui_retry_connection')}
+            </button>
+          </div>
+        )}
         {runtimeError && <ErrorCard error={runtimeError} />}
       </div>
     </section>

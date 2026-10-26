@@ -132,6 +132,7 @@ export function useAppLogic() {
     )
       return
     const wasRunning = runtime.running
+    if (wasRunning) connection.dismiss()
     const interval = config?.keep_awake_interval_secs ?? 3
     await runtime.toggle(mode, connection.connected, connection.busy || settings.isSaving)
     if (!runtime.error) {

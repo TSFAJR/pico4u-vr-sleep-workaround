@@ -11,6 +11,9 @@ export interface AppConfig {
 }
 
 export interface ConnectionStatus {
+  phase?: 'checking' | 'connected' | 'reconnecting' | 'disconnected'
+  attempt?: number
+  error?: AppError | null
   is_usb_connected: boolean
   is_wifi_ip_available: boolean
   wifi_ip: string | null

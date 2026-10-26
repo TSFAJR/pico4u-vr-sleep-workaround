@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
-import { poll, retry } from '../lib/async'
+import { poll } from '../lib/async'
 import { toAppError, type AppError } from '../lib/errors'
 import type { AppConfig, ConnectionMode, ConnectionResult } from '../types'
 import { isConnected } from '../types'
@@ -19,6 +19,7 @@ export function useConnection(
   const [error, setError] = useState<AppError | null>(null)
   const lifecycle = useRef<AbortController | null>(null)
   const lock = useRef(false)
+  const operation = useRef<AbortController | null>(null)
   const initial = useRef(false)
   const revision = useRef(0)
   const mode = config?.last_connection_mode ?? null
@@ -45,9 +46,10 @@ export function useConnection(
           return { generation, status }
         },
         ({ generation, status }) => {
+          if (status.attempt) setAttempt(Math.min(3, status.attempt))
           if (generation === revision.current && !lock.current) {
             setResult({ kind: 'success', status })
-            if (isConnected({ kind: 'success', status }, mode)) setError(null)
+            setError(status.error ?? null)
           }
         },
         (e) => {
@@ -68,11 +70,25 @@ export function useConnection(
   }, [running, result, mode])
 
   const perform = useCallback(
-    async (task: (signal: AbortSignal) => Promise<AppConfig>, automatic = false) => {
+    async (
+      task: (signal: AbortSignal) => Promise<AppConfig>,
+      automatic = false,
+      allowRunning = false,
+    ) => {
       const controller = lifecycle.current
-      if (!controller || controller.signal.aborted || lock.current || running || !config)
+      if (
+        !controller ||
+        controller.signal.aborted ||
+        lock.current ||
+        (running && !allowRunning) ||
+        !config
+      )
         return false
-      const signal = controller.signal
+      const active = new AbortController()
+      operation.current = active
+      const abort = () => active.abort()
+      controller.signal.addEventListener('abort', abort, { once: true })
+      const signal = active.signal
       lock.current = true
       revision.current++
       setBusy(true)
@@ -97,10 +113,10 @@ export function useConnection(
         }
         return false
       } finally {
-        if (!signal.aborted) {
-          lock.current = false
-          setBusy(false)
-        }
+        controller.signal.removeEventListener('abort', abort)
+        operation.current = null
+        lock.current = false
+        if (!controller.signal.aborted) setBusy(false)
       }
     },
     [config, running],
@@ -108,18 +124,20 @@ export function useConnection(
 
   const connect = useCallback(
     (targetMode: ConnectionMode = mode ?? 'wired', targetIp = ip, automatic = false) =>
-      perform(async (signal) => {
-        const trimmedIp = targetIp.trim()
-        if (automatic) {
-          await retry(() => api.connect(targetMode, trimmedIp, signal), signal, setAttempt)
-        } else {
+      perform(
+        async (signal) => {
+          const trimmedIp = targetIp.trim()
+          setAttempt(1)
           await api.connect(targetMode, trimmedIp, signal)
-        }
-        return update({
-          last_connection_mode: targetMode,
-          ip_address: trimmedIp,
-        })
-      }, automatic),
+          if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+          return update({
+            last_connection_mode: targetMode,
+            ip_address: trimmedIp,
+          })
+        },
+        automatic,
+        targetMode === mode && targetIp.trim() === ip.trim(),
+      ),
     [perform, mode, ip, update],
   )
 
@@ -131,7 +149,11 @@ export function useConnection(
     else setAutoStatus('skipped')
   }, [config, connect, mode, ip, running])
 
-  const dismiss = useCallback(() => setAutoStatus('skipped'), [])
+  const dismiss = useCallback(() => {
+    operation.current?.abort()
+    revision.current++
+    setAutoStatus('skipped')
+  }, [])
 
   const clearError = useCallback(() => {
     setError(null)

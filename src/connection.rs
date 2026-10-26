@@ -10,8 +10,11 @@ pub enum ConnectionMode {
     Wireless,
 }
 
-#[derive(Default, serde::Serialize)]
+#[derive(Default, Clone, serde::Serialize)]
 pub struct ConnectionStatus {
+    pub phase: String,
+    pub attempt: u32,
+    pub error: Option<AppError>,
     pub is_usb_connected: bool,
     pub is_wifi_ip_available: bool,
     pub wifi_ip: Option<String>,
@@ -269,42 +272,6 @@ pub async fn wifi_ip(app: &AppHandle, serial: &str) -> Result<Option<String>, Ap
     let output =
         run_adb_device_command(Some(app), Some(serial), "shell:ip addr show wlan0").await?;
     Ok(parse_wifi_ip(&output))
-}
-
-pub async fn status(
-    app: &AppHandle,
-    mode: ConnectionMode,
-    ip: &str,
-) -> Result<ConnectionStatus, AppError> {
-    let mut status = ConnectionStatus::default();
-    let usb = target_device(app, ConnectionMode::Wired, "")
-        .await
-        .ok()
-        .flatten();
-    let tcp = if mode == ConnectionMode::Wireless && !ip.trim().is_empty() {
-        target_device(app, mode, ip).await.ok().flatten()
-    } else {
-        None
-    };
-    status.is_usb_connected = usb.is_some();
-    status.is_adb_tcp_connected = tcp.is_some();
-    if let Some(tcp_serial) = tcp.as_deref() {
-        // Only show the USB cable for the same physical headset as the TCP target.
-        if let Some(usb_serial) = usb.as_deref()
-            && let Ok(identity) =
-                run_adb_device_command(Some(app), Some(tcp_serial), "shell:getprop ro.serialno")
-                    .await
-        {
-            status.is_usb_connected = identity.trim() == usb_serial;
-        }
-    }
-    if let Some(serial) = tcp.as_deref().or(usb.as_deref())
-        && let Ok(ip) = wifi_ip(app, serial).await
-    {
-        status.wifi_ip = ip;
-        status.is_wifi_ip_available = status.wifi_ip.is_some();
-    }
-    Ok(status)
 }
 
 #[cfg(test)]
