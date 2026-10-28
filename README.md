@@ -8,7 +8,7 @@ A Windows tool for extended PICO 4 Ultra sessions and V-sleep, with USB/wireless
 
 | Feature | Implementation |
 | --- | --- |
-| Keep awake | Sends `input keyevent 224` over ADB periodically, every 3 seconds by default. |
+| Keep awake | Checks the power state over ADB every 3 seconds by default and sends `input keyevent 224` when the headset is not reported as awake. This wakes the headset after sleep; it does not disable system sleep. |
 | USB / wireless connection | Checks the headset and debugging authorization. USB setup enables wireless ADB; subsequent connections use the headset IP, with automatic reconnection support. |
 | Manual sleep mode | Saves recovery information, lowers headset backlight with `cmd display set-brightness`, and applies a separate SteamVR sleep brightness preset. |
 | Automatic sleep detection | Samples headset motion through OpenVR. Calibrated movement, optional rotation and controller input determine sustained low activity, triggering dimming after the configured duration. Includes confirmation and cooldown settings. |
@@ -16,6 +16,14 @@ A Windows tool for extended PICO 4 Ultra sessions and V-sleep, with USB/wireless
 | Recovery | Exit sleep restores recorded software brightness and headset backlight. When exact backlight recovery is unavailable, it uses the configured fallback, default 50%. Failed recovery can be retried. Restore 100% only removes SteamVR dimming. |
 | Desktop controls | Supports controller-emulated pointer dragging and single-instance operation. Exiting with active tasks asks for confirmation and cleans up this tool’s tasks and helper processes. |
 | Settings and logs | English, Japanese and Simplified Chinese; light/dark themes, ⓘ explanations and activity logs. |
+
+### Keep-awake behavior and limitations
+
+Each cycle first checks the ADB connection, then reads `dumpsys power`. If the output contains `mWakefulness=Awake`, no wake command is sent. Otherwise, including when the power query fails, the tool attempts `input keyevent 224` (`KEYCODE_WAKEUP`). A failed connection check prevents that cycle from reaching the wake command.
+
+This is periodic detection and wake-up, not a continuous wake lock or a change to PICO's sleep policy. The headset can turn its screen off between checks and only wake at the next check. ADB delays or reconnection can extend the interruption. A shorter interval may reduce the delay, but cannot guarantee uninterrupted display, streaming or audio. Android defines the wake key as having no effect when the device is already awake; sending it repeatedly is not a guaranteed way to reset the sleep timer ([Android reference](https://developer.android.com/reference/android/view/KeyEvent#KEYCODE_WAKEUP)).
+
+The app's “sleep mode” means brightness dimming, not a request for Android to sleep. Automatic sleep detection triggers that dimming independently of the ADB wake-up loop.
 
 ## Quick start
 
